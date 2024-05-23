@@ -34,7 +34,7 @@ jobs:
 
       - name: Unzip check folder
         run: |
-          unzip tests.zip -d tests
+          unzip tests.zip
 
 #      - name: Test database connection
 #        run: |

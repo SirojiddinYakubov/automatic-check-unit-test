@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ "unittest" ]
+
 jobs:
   deploy:
     name: check code

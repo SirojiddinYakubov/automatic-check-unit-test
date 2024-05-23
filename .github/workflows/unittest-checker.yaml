@@ -2,7 +2,7 @@ name: Code Check CI/CD
 on:
   workflow_dispatch:
   push:
-    branches: [ "*" ]
+    branches: [ "main" ]
 jobs:
   deploy:
     name: check code
@@ -16,9 +16,6 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v3
 
-#      - name: Install pytest
-#        run: pip install -r requirements.txt
-
       - name: Create .env file
         run: cp .env.example .env
 
@@ -30,13 +27,14 @@ jobs:
           sleep 5s
           curl -v http://127.0.0.1:8000/health/
 
+      - name: Download UI Test File
+        run: |
+          curl -L "https://www.googleapis.com/drive/v3/files/1ggabLfMFrGItzBa3rcIbgLTv_KNJZ2fX?alt=media&key=AIzaSyA1r4w1NyLdflcxobBnKMzTZju0GfRoS7w" > tests.zip
+#          curl -L "${{ secrets.CHECK_FILE }}" > ui-test.py
+
       - name: Unzip check folder
         run: |
-          unzip tests.zip
-
-#      - name: Download UI Test File
-#        run: |
-#          curl -L "${{ secrets.CHECK_FILE }}" > ui-test.py
+          unzip tests.zip tests
 
 #      - name: Test database connection
 #        run: |

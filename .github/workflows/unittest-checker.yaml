@@ -1,8 +1,8 @@
-name: Code Check CI/CD
+name: Unittest Check CI/CD
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: [ "unittest" ]
 jobs:
   deploy:
     name: check code
@@ -34,7 +34,7 @@ jobs:
 
       - name: Unzip check folder
         run: |
-          unzip tests.zip tests
+          unzip tests.zip -d tests
 
 #      - name: Test database connection
 #        run: |

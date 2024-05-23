@@ -1,4 +1,4 @@
-name: Code Check CI/CD
+name: Newman Check CI/CD
 on:
   workflow_dispatch:
   push:

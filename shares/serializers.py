@@ -8,7 +8,7 @@ class ArticleSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'content', 'author', 'publication_date', 'tags', 'claps', 'views']
 
 
-class TagSerializer(serializers.Serializer):
+class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ['id', 'name', 'description']

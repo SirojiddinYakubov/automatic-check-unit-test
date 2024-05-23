@@ -59,7 +59,7 @@ jobs:
 
       - name: Send run_id
         run: |
-          curl --location 'https://api-dev.mohirpool.uz/api/site/accelerators/github-feedbacks/${{ github.actor }}/' \
+          curl --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.actor }}/' \
           --header 'X-API-KEY: ${{ secrets.X_API_KEY }}' \
           --form 'action_run_id=${{ github.run_id }}' \
           --form 'project=${{ secrets.PROJECT_ID }}'

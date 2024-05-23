@@ -1,8 +1,8 @@
-name: Unittest Check CI/CD
+name: Unittest Check CI/CD with error
 on:
   workflow_dispatch:
   push:
-    branches: [ "unittest" ]
+    branches: [ "unittest-with-error" ]
 jobs:
   deploy:
     name: check code
@@ -34,14 +34,6 @@ jobs:
       - name: Unzip check test zip folder
         run: |
           unzip tests.zip
-
-#      - name: Test database connection
-#        run: |
-#          sudo apt-get install -y postgresql-client redis-tools
-#          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "CREATE TABLE student(id SERIAL PRIMARY KEY, firstName VARCHAR(40) NOT NULL, lastName VARCHAR(40) NOT NULL, age INT, address VARCHAR(80), email VARCHAR(40))"
-#          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "INSERT INTO student(firstname, lastname, age, address, email) VALUES('test', 'test2', 12, 'test3', 'admin@admin.com') RETURNING *"
-#          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "SELECT * FROM student"
-#        continue-on-error: true
 
       - name: Run Tests
         run: docker compose exec app pytest -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2

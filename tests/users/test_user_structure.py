@@ -51,12 +51,11 @@ def test_custom_user_model():
     assert os.path.exists(full_avatar_path), f"Avatar file not found at {full_avatar_path}"
 
 
-
 @pytest.mark.order(3)
 def test_custom_user_admin():
     CustomUser = get_user_model()  # noqa
     try:
-        import users.admin     # noqa
+        import users.admin  # noqa
     except ImportError:
         assert False, f"{app_name}.admin missing"
 

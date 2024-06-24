@@ -8,7 +8,7 @@ app_name = 'users'
 @pytest.mark.django_db
 def test_users_app_exists():
     try:
-        import users
+        import users  # noqa
     except ImportError:
         assert False, f"{app_name} app folder missing"
     assert app_name in settings.INSTALLED_APPS, f"{app_name} app not installed"

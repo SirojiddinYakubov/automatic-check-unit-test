@@ -1,5 +1,4 @@
 import os
-import uuid
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -10,7 +9,6 @@ def file_upload(instance, filename):
     ext = filename.split('.')[-1]
     filename = f'{instance.username}.{ext}'
     return os.path.join('users/avatars/', filename)
-
 
 
 class CustomUser(AbstractUser):

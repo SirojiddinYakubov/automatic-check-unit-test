@@ -105,4 +105,4 @@ environment.json
 collection.json
 .env
 reports
-tests12/.pytest_cache
+tests/.pytest_cache

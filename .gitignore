@@ -106,3 +106,4 @@ collection.json
 .env
 reports
 tests/.pytest_cache
+.pytest_cache

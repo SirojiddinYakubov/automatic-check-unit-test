@@ -1,9 +1,10 @@
+import os
 import pytest
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
-from rest_framework import serializers
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 model_name = 'CustomUser'
 app_name = 'users'
@@ -38,12 +39,24 @@ def test_custom_user_model():
     assert user.email == 'test@test.com', f"{model_name} model email not set"
     assert user.username == 'test', f"{model_name} model username not set"
 
+    # Test the avatar upload functionality
+    avatar = SimpleUploadedFile("avatar.jpg", b"file_content", content_type="image/jpeg")
+    user.avatar = avatar
+    user.save()
+
+    expected_avatar_path = os.path.join('users/avatars', f'{user.username}.jpg')
+    assert user.avatar.name == expected_avatar_path, f"Avatar not uploaded correctly: {user.avatar.name}"
+
+    full_avatar_path = os.path.join(settings.MEDIA_ROOT, expected_avatar_path)
+    assert os.path.exists(full_avatar_path), f"Avatar file not found at {full_avatar_path}"
+
+
 
 @pytest.mark.order(3)
 def test_custom_user_admin():
     CustomUser = get_user_model()  # noqa
     try:
-        import users.admin
+        import users.admin     # noqa
     except ImportError:
         assert False, f"{app_name}.admin missing"
 

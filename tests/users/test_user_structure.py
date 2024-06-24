@@ -53,6 +53,7 @@ def test_custom_user_admin():
         assert False, f"{model_name} model not registered in admin"
 
     assert CustomUserAdmin is not None, f"{model_name} model not registered in admin"
+
     fieldset_fields = frozenset(field for fieldset in CustomUserAdmin.fieldsets for field in fieldset[1]['fields'])
     expected_fields = frozenset(['middle_name', 'avatar'])
     assert fieldset_fields.intersection(

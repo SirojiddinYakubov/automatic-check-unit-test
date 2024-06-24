@@ -10,5 +10,7 @@ EXPOSE 8000
 
 RUN pip install -r requirements.txt
 
+# RUN python manage.py collectstatic --noinput
+
 CMD python manage.py migrate && \
     gunicorn core.wsgi:application --bind 0.0.0.0:8000

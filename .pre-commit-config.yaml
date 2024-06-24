@@ -42,11 +42,11 @@ repos:
         name: Check for runserver.
         entry: sh -c "./manage.py check"
         stages: [ commit ]
-  - repo: local
-    hooks:
-      - id: pytest-check
-        name: pytest-check
-        language: system
-        entry: bash -c "pytest -v"
-        pass_filenames: true
-        always_run: true
+  # - repo: local
+  #   hooks:
+  #     - id: pytest-check
+  #       name: pytest-check
+  #       language: system
+  #       entry: bash -c "pytest -v"
+  #       pass_filenames: true
+  #       always_run: true

@@ -6,6 +6,7 @@ from django.db import models
 
 
 def file_upload(instance, filename):
+    """ This function is used to upload the user's avatar. """
     ext = filename.split('.')[-1]
     filename = f'{instance.username}.{ext}'
     return os.path.join('users/avatars/', filename)

@@ -6,7 +6,6 @@ from .models import CustomUser
 @admin.register(CustomUser)  # register in the admin panel
 class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
-        (None, {'fields': ('middle_name', 'avatar',)}),
         ('Additional info', {
             'fields': ('middle_name', 'avatar',)
         }),

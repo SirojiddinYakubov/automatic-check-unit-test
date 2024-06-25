@@ -6,7 +6,6 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import UserSerializer, LoginSerializer
 from django.contrib.auth import get_user_model
 
-
 User = get_user_model()
 
 
@@ -25,7 +24,6 @@ class SignupView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 class LoginView(APIView):
     permission_classes = (permissions.AllowAny,)
 
@@ -41,8 +39,7 @@ class LoginView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-class Me(APIView):
+class UsersMe(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

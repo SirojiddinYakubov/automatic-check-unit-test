@@ -11,7 +11,6 @@ def file_upload(instance, filename):
     return os.path.join('users/avatars/', filename)
 
 
-
 class CustomUser(AbstractUser):
     """  This model represents a custom user. """
     middle_name = models.CharField(max_length=30, blank=True, null=True)

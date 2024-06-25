@@ -1,4 +1,5 @@
 import os
+
 import pytest
 from django.conf import settings
 from django.contrib import admin
@@ -39,12 +40,21 @@ def test_custom_user_model():
     assert user.email == 'test@test.com', f"{model_name} model email not set"
     assert user.username == 'test', f"{model_name} model username not set"
 
+    old_avatar = os.path.join(settings.MEDIA_ROOT, f"users/avatars/{user.username}.gif")
+    if os.path.exists(old_avatar):
+        os.remove(old_avatar)
+
     # Test the avatar upload functionality
-    avatar = SimpleUploadedFile("avatar.jpg", b"file_content", content_type="image/jpeg")
+    small_gif = (
+        b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
+        b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
+        b'\x02\x4c\x01\x00\x3b'
+    )
+    avatar = SimpleUploadedFile(f"{user.username}.gif", small_gif, content_type="image/gif")
     user.avatar = avatar
     user.save()
 
-    expected_avatar_path = os.path.join('users/avatars', f'{user.username}.jpg')
+    expected_avatar_path = os.path.join('users/avatars', f'{user.username}.gif')
     assert user.avatar.name == expected_avatar_path, f"Avatar not uploaded correctly: {user.avatar.name}"
 
     full_avatar_path = os.path.join(settings.MEDIA_ROOT, expected_avatar_path)

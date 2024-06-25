@@ -5,10 +5,21 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from .serializers import UserSerializer, LoginSerializer
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 User = get_user_model()
 
 
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Sign up a new user",
+        responses={
+            201: UserSerializer,
+            400: 'Validation Error'
+        }
+    )
+)
 class SignupView(APIView):
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -24,6 +35,16 @@ class SignupView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Log in a user",
+        responses={
+            200: 'Login successful',
+            400: 'Validation Error'
+        }
+    )
+)
 class LoginView(APIView):
     permission_classes = (permissions.AllowAny,)
 
@@ -39,6 +60,14 @@ class LoginView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        summary="Get user information",
+        responses={
+            200: UserSerializer,
+        }
+    )
+)
 class UsersMe(APIView):
     permission_classes = [IsAuthenticated]
 

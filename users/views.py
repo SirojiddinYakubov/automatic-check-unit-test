@@ -74,25 +74,23 @@ class LoginView(APIView):
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
-# @extend_schema_view(
-#     get=extend_schema(
-#         summary="Get user information",
-#         responses={
-#             200: UserSerializer,
-#             400: ValidationErrorSerializer
-#         }
-#     )
-# )
-# class UsersMe(generics.RetrieveAPIView):
-#     serializer_class = UserSerializer
-#     permission_classes = (IsAuthenticated,)
-#
-#     def get(self, request):
-#         user = request.user
-#         serializer = UserSerializer(user)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
+@extend_schema_view(
+    get=extend_schema(
+        summary="Get user information",
+        responses={
+            200: UserSerializer,
+            400: ValidationErrorSerializer
+        }
+    ),
+    patch=extend_schema(
+        summary="Update user information",
+        request=UserUpdateSerializer,
+        responses={
+            200: UserUpdateSerializer,
+            400: ValidationErrorSerializer
+        }
+    )
+)
 class UsersMe(generics.RetrieveAPIView, generics.UpdateAPIView):
     http_method_names = ['get', 'patch']
     queryset = User.objects.filter(is_active=True)

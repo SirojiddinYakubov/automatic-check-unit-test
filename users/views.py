@@ -11,7 +11,6 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 User = get_user_model()
 
 
-
 @extend_schema_view(
     post=extend_schema(
         summary="Sign up a new user",
@@ -40,7 +39,6 @@ class SignupView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 @extend_schema_view(
     post=extend_schema(
         summary="Log in a user",
@@ -56,10 +54,14 @@ class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(
+            request,
+            username=serializer.validated_data['username'],
+            password=serializer.validated_data['password']
+        )
 
         if user is not None:
             refresh = RefreshToken.for_user(user)
@@ -69,8 +71,6 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
-
 
 
 @extend_schema_view(

@@ -1,5 +1,11 @@
 import pytest
+from pytest_factoryboy import register
 from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from tests.factories.user_factory import UserFactory
+
+register(UserFactory)
 
 
 @pytest.fixture
@@ -12,6 +18,15 @@ def api_client():
 
     return _api_client
 
+
+@pytest.fixture
+def tokens():
+    def _tokens(user):
+        refresh = RefreshToken.for_user(user)
+        access = str(getattr(refresh, 'access_token'))
+        return access, refresh
+
+    return _tokens
 
 # def pytest_itemcollected(item):
 #     # Custom test names

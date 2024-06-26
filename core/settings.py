@@ -145,19 +145,7 @@ SPECTACULAR_SETTINGS = {
             'type': 'apiKey',
             'name': 'Authorization',
             'in': 'header'
-        },
-        'basic': {
-            'type': 'basic'
-        },
-    },
-}
-
-SWAGGER_SETTINGS = {
-    'USE_SESSION_AUTH': False,
-    'SECURITY_DEFINITIONS': {
-        'Basic': {
-            'type': 'basic'
-        },
+        }
     },
 }
 

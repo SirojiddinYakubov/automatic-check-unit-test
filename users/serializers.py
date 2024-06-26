@@ -29,6 +29,12 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'middle_name', 'email', 'avatar']
+
+
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)

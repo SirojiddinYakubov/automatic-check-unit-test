@@ -131,6 +131,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
+    'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 10,
 }
 
 # drf_spectacular
@@ -140,6 +143,7 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Medium Clone project',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,  # this required for upload file
     'SECURITY_DEFINITIONS': {
         'Bearer': {
             'type': 'apiKey',

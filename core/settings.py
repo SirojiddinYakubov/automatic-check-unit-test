@@ -25,6 +25,8 @@ EXTERNAL_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_spectacular',
+    'rest_framework_simplejwt.token_blacklist',
+    'django_redis',
 ]
 
 LOCAL_APPS = [
@@ -158,7 +160,7 @@ SPECTACULAR_SETTINGS = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=10),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 
     'ALGORITHM': 'HS256',

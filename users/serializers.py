@@ -67,3 +67,13 @@ class ValidationErrorSerializer(serializers.Serializer):
         if isinstance(instance, dict):
             return instance
         return super().to_representation(instance)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate(self, data):
+        if data['new_password'] == data['old_password']:
+            raise serializers.ValidationError("New and old passwords should not be the same")
+        return data

@@ -63,7 +63,7 @@ class LoginSerializer(serializers.Serializer):
             if user is None:
                 raise serializers.ValidationError('Invalid login credentials')
         else:
-            raise serializers.ValidationError('Both "username" and "password" are required')
+            raise serializers.ValidationError("Foydalanuvchi nomi va parol ham talab qilinadi")
 
         data['user'] = user
         return data
@@ -90,5 +90,5 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data['new_password'] == data['old_password']:
-            raise serializers.ValidationError("New and old passwords should not be the same")
+            raise serializers.ValidationError("Yangi va eski parollar bir xil bo'lmasligi kerak")
         return data

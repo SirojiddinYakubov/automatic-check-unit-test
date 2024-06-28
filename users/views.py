@@ -74,7 +74,7 @@ class LoginView(APIView):
             tokens = UserService.create_tokens(user)
             return Response(tokens, status=status.HTTP_200_OK)
         else:
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'detail': 'Hisob maʼlumotlari yaroqsiz'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @extend_schema_view(
@@ -144,14 +144,15 @@ class LogoutView(generics.GenericAPIView):
             TokenType.REFRESH,
             settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
         )
-        return Response({"detail": "Successfully logged out"})
+        return Response({"detail": "Mufaqqiyatli chiqildi."}, status=status.HTTP_200_OK)
+
 
 @extend_schema_view(
     post=extend_schema(
         summary="Change user password",
         request=ChangePasswordSerializer,
         responses={
-            200: None,
+            200: TokenResponseSerializer,
             401: ValidationErrorSerializer
         }
     )
@@ -175,6 +176,27 @@ class ChangePasswordView(APIView):
 
             update_session_auth_hash(request, user)
 
-            return Response({"detail": "New password updated."}, status=status.HTTP_200_OK)
+            TokenService.add_token_to_redis(
+                request.user.id,
+                'fake_token',
+                TokenType.ACCESS,
+                settings.SIMPLE_JWT.get("ACCESS_TOKEN_LIFETIME"),
+            )
+            TokenService.add_token_to_redis(
+                request.user.id,
+                'fake_token',
+                TokenType.REFRESH,
+                settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
+            )
+
+            tokens = UserService.create_tokens(user)
+
+            return Response({
+                "detail": "Parol mofaqqiyatli o'zgartirildi.",
+                "access": tokens['access'],
+                "refresh": tokens['refresh'],
+            }, status=status.HTTP_200_OK)
         else:
-            return Response({"error": "Invalid old password."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "detail": "Eski parol xato."
+            }, status=status.HTTP_400_BAD_REQUEST)

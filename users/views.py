@@ -1,14 +1,19 @@
+from django.conf import settings
 from rest_framework import status, permissions, generics, parsers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
+
+from .enums import TokenType
 from .serializers import UserSerializer, LoginSerializer, ValidationErrorSerializer, TokenResponseSerializer, \
     UserUpdateSerializer
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_redis import get_redis_connection
+
+from .services import TokenService, UserService
 
 User = get_user_model()
 
@@ -66,11 +71,8 @@ class LoginView(APIView):
         )
 
         if user is not None:
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }, status=status.HTTP_200_OK)
+            tokens = UserService.create_tokens(user)
+            return Response(tokens, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -107,10 +109,39 @@ class UsersMe(generics.RetrieveAPIView, generics.UpdateAPIView):
         return UserSerializer
 
     def patch(self, request, *args, **kwargs):
-
         redis_conn = get_redis_connection('default')
         redis_conn.set('test_key', 'test_value', ex=3600)
         cached_value = redis_conn.get('test_key')
         print(cached_value)
 
         return super().partial_update(request, *args, **kwargs)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Log out a user",
+        request=None,
+        responses={
+            200: None,
+            401: ValidationErrorSerializer
+        }
+    )
+)
+class LogoutView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=None)
+    def post(self, request, *args, **kwargs):
+        TokenService.add_token_to_redis(
+            request.user.id,
+            'fake_token',
+            TokenType.ACCESS,
+            settings.SIMPLE_JWT.get("ACCESS_TOKEN_LIFETIME"),
+        )
+        TokenService.add_token_to_redis(
+            request.user.id,
+            'fake_token',
+            TokenType.REFRESH,
+            settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
+        )
+        return Response({"detail": "Successfully logged out"})

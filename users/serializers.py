@@ -61,6 +61,7 @@ class TokenResponseSerializer(serializers.Serializer):
 
 class ValidationErrorSerializer(serializers.Serializer):
     detail = serializers.CharField()
+    code = serializers.CharField(required=False)
 
     def to_representation(self, instance):
         if isinstance(instance, dict):

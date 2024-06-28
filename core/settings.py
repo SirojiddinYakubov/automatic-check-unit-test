@@ -1,6 +1,6 @@
 from decouple import config
 from pathlib import Path
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -200,7 +200,6 @@ DJANGORESIZED_DEFAULT_KEEP_META = True
 DJANGORESIZED_DEFAULT_FORMAT_EXTENSIONS = {'JPEG': ".jpg"}
 DJANGORESIZED_DEFAULT_NORMALIZE_ROTATION = True
 
-
 REDIS_HOST = config('REDIS_HOST', default='localhost')
 REDIS_PORT = config('REDIS_PORT', default='6379')
 
@@ -218,3 +217,6 @@ CACHES = {
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
+
+BIRTH_YEAR_MIN = 1900
+BIRTH_YEAR_MAX = datetime.now().year

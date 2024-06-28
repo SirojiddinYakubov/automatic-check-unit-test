@@ -102,15 +102,15 @@ class UsersMe(generics.RetrieveAPIView, generics.UpdateAPIView):
         return self.request.user
 
     def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return UserUpdateSerializer
+        return UserSerializer
+
+    def patch(self, request, *args, **kwargs):
 
         redis_conn = get_redis_connection('default')
         redis_conn.set('test_key', 'test_value', ex=3600)
         cached_value = redis_conn.get('test_key')
         print(cached_value)
 
-        if self.request.method == 'PATCH':
-            return UserUpdateSerializer
-        return UserSerializer
-
-    def patch(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)

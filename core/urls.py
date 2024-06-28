@@ -8,8 +8,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 
 def is_superuser(user):
     # return user.is_superuser
-    return user.is_authenticated
-
+    # return user.is_authenticated
+    return True
 
 urlpatterns = [
     path('admin/', admin.site.urls),

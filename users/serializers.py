@@ -61,7 +61,7 @@ class LoginSerializer(serializers.Serializer):
         if username and password:
             user = authenticate(username=username, password=password)
             if user is None:
-                raise serializers.ValidationError('Invalid login credentials')
+                raise serializers.ValidationError('Kirish maʼlumotlari notoʻgʻri')
         else:
             raise serializers.ValidationError("Foydalanuvchi nomi va parol ham talab qilinadi")
 

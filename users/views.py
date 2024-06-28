@@ -170,7 +170,7 @@ class ChangePasswordView(APIView):
             password=serializer.validated_data['old_password']
         )
 
-        if user:
+        if user is not None:
             user.set_password(serializer.validated_data['new_password'])
             user.save()
 
@@ -192,7 +192,6 @@ class ChangePasswordView(APIView):
             tokens = UserService.create_tokens(user)
 
             return Response({
-                "detail": "Parol mofaqqiyatli o'zgartirildi.",
                 "access": tokens['access'],
                 "refresh": tokens['refresh'],
             }, status=status.HTTP_200_OK)

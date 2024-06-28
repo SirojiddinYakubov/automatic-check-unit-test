@@ -59,13 +59,6 @@ class CustomUser(AbstractUser):
             )
         ]
 
-    def get_full_name(self):
-        """ This method returns the full name of the user"""
-        if self.full_name:
-            return self.full_name
-        else:
-            return super().get_full_name()
-
     def __str__(self):
         """ This method returns the full name of the user"""
         if self.full_name:

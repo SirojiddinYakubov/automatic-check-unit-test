@@ -1,5 +1,6 @@
 import pytest
 from django.conf import settings
+from django.urls import reverse
 
 
 @pytest.mark.order(1)
@@ -17,3 +18,19 @@ def test_django_resized():
         import django_resized  # noqa
     except ImportError:
         assert False, "django_resized is not installed"
+
+
+@pytest.mark.order(1)
+@pytest.mark.django_db
+def test_swagger_schema():
+    assert 'drf_spectacular' in settings.INSTALLED_APPS, "drf_spectacular package is not installed"
+    assert 'DEFAULT_SCHEMA_CLASS' in settings.REST_FRAMEWORK, "DEFAULT_SCHEMA_CLASS package is not installed"
+    assert hasattr(settings, 'SPECTACULAR_SETTINGS'), "SPECTACULAR_SETTINGS not found in settings"
+
+    schema_path = reverse('schema')
+    swagger_path = reverse('swagger-ui')
+    redoc_path = reverse('redoc')
+
+    assert schema_path == '/schema/', "Schema path is not configured correctly"
+    assert swagger_path == '/swagger/', "Swagger path is not configured correctly"
+    assert redoc_path == '/redoc/', "Redoc path is not configured correctly"

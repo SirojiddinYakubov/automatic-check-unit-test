@@ -1,13 +1,14 @@
 import os
 
+from django.conf import settings
 from django.contrib.postgres.indexes import HashIndex
 from django.core import validators
+from django.core.exceptions import ValidationError
 from django_resized import ResizedImageField
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from rest_framework.exceptions import ValidationError
 
-from core.settings import BIRTH_YEAR_MIN, BIRTH_YEAR_MAX
+from users.errors import BIRTH_YEAR_ERROR_MSG
 
 
 def file_upload(instance, filename):
@@ -23,8 +24,8 @@ class CustomUser(AbstractUser):
     avatar = ResizedImageField(size=[300, 300], crop=['top', 'left'], upload_to=file_upload, blank=True)
     birth_year = models.IntegerField(
         validators=[  # first option for checking birth year range
-            validators.MinValueValidator(BIRTH_YEAR_MIN),
-            validators.MaxValueValidator(BIRTH_YEAR_MAX)
+            validators.MinValueValidator(settings.BIRTH_YEAR_MIN),
+            validators.MaxValueValidator(settings.BIRTH_YEAR_MAX)
         ],
         null=True,
         blank=True
@@ -32,10 +33,8 @@ class CustomUser(AbstractUser):
 
     def clean(self):  # second option for checking birth year range
         super().clean()
-        if self.birth_year and not (BIRTH_YEAR_MIN < self.birth_year < BIRTH_YEAR_MAX):
-            raise ValidationError(
-                f"Tug'ilgan yili {BIRTH_YEAR_MIN} yildan katta va {BIRTH_YEAR_MAX} yilgacha bo'lishi kerak."
-            )
+        if self.birth_year and not (settings.BIRTH_YEAR_MIN < self.birth_year < settings.BIRTH_YEAR_MAX):
+            raise ValidationError(BIRTH_YEAR_ERROR_MSG)
 
     def save(self, *args, **kwargs):
         self.clean()
@@ -54,7 +53,8 @@ class CustomUser(AbstractUser):
         ]
         constraints = [
             models.CheckConstraint(  # third option for checking birth year range
-                check=models.Q(birth_year__gt=BIRTH_YEAR_MIN) & models.Q(birth_year__lt=BIRTH_YEAR_MAX),
+                check=models.Q(birth_year__gt=settings.BIRTH_YEAR_MIN) & models.Q(
+                    birth_year__lt=settings.BIRTH_YEAR_MAX),
                 name='check_birth_year_range'
             )
         ]

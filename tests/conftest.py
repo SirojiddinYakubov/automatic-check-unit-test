@@ -1,4 +1,5 @@
 import pytest
+import fakeredis
 from pytest_factoryboy import register
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -27,6 +28,12 @@ def tokens():
         return access, refresh
 
     return _tokens
+
+
+@pytest.fixture
+def fake_redis():
+    return fakeredis.FakeRedis()
+
 
 # def pytest_itemcollected(item):
 #     # Custom test names

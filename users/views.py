@@ -1,3 +1,4 @@
+import random
 from django.conf import settings
 from rest_framework import status, permissions, generics, parsers
 from rest_framework.response import Response
@@ -5,6 +6,7 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate, update_session_auth_hash
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
+from .utils import Email
 
 from .enums import TokenType
 from .serializers import (UserSerializer, LoginSerializer, ValidationErrorSerializer, TokenResponseSerializer,
@@ -104,6 +106,11 @@ class UsersMe(generics.RetrieveAPIView, generics.UpdateAPIView):
         return self.request.user
 
     def get_serializer_class(self):
+
+        user = self.request.user
+        code = random.randint(10000, 99999)
+        Email.send_email(user, code)
+
         if self.request.method == 'PATCH':
             return UserUpdateSerializer
         return UserSerializer
@@ -122,7 +129,7 @@ class UsersMe(generics.RetrieveAPIView, generics.UpdateAPIView):
         summary="Log out a user",
         request=None,
         responses={
-            200: None,
+            200: ValidationErrorSerializer,
             401: ValidationErrorSerializer
         }
     )

@@ -4,6 +4,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 from django.contrib.auth import get_user_model
+from unittest.mock import MagicMock
+from users.enums import TokenType
 
 User = get_user_model()
 
@@ -495,3 +497,217 @@ def test_user_me_patch(user_update_data, api_client):
             expected_avatar_filename = f"{user.username}.gif"
             assert os.path.basename(
                 avatar_path) == expected_avatar_filename, f"Avatar filename mismatch: expected '{expected_avatar_filename}', got '{os.path.basename(avatar_path)}'"
+
+
+@pytest.fixture
+def change_password_data(request, user_factory, tokens):
+    old_password = 'strong_password_123'
+    new_password = 'new_password_123'
+    user = user_factory.create(password=old_password)
+    user.save()
+
+    access, _ = tokens(user)
+
+    def valid_password():
+        return (
+            200, user, access,
+            {
+                'old_password': old_password,
+                'new_password': new_password
+            }
+        )
+
+    def incorrect_password():
+        return (
+            400, user, access,
+            {
+                'old_password': '<PASSWORD>',
+                'new_password': new_password
+            }
+        )
+
+    def invalid_old_password():
+        return (
+            400, user, access,
+            {
+                'old_password': 'asdf*&^%',
+                'new_password': new_password
+            },
+        )
+
+    def empty_old_password():
+        return (
+            400, user, access,
+            {
+                'old_password': '',
+                'new_password': new_password
+            },
+        )
+
+    def required_old_password():
+        return (
+            400, user, access,
+            {
+                'new_password': new_password
+            },
+        )
+
+    def invalid_new_password():
+        return (
+            400, user, access,
+            {
+                'old_password': old_password,
+                'new_password': old_password
+            },
+        )
+
+    def empty_new_password():
+        return (
+            400, user, access,
+            {
+                'old_password': old_password,
+                'new_password': ''
+            },
+        )
+
+    def required_new_password():
+        return (
+            400, user, access,
+            {
+                'old_password': old_password,
+            },
+        )
+
+    def inactive_user():
+        user.is_active = False
+        user.save()
+        return 401, user, 'fake-token', {}
+
+    def unauthorized_user():
+        return 401, user, 'fake-token', {}
+
+    data = {
+        'valid_password': valid_password,
+        'incorrect_password': incorrect_password,
+        'invalid_old_password': invalid_old_password,
+        'empty_old_password': empty_old_password,
+        'required_old_password': required_old_password,
+        'invalid_new_password': invalid_new_password,
+        'empty_new_password': empty_new_password,
+        'required_new_password': required_new_password,
+        'inactive_user': inactive_user,
+        'unauthorized_user': unauthorized_user
+    }
+    return data[request.param]
+
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'change_password_data',
+    [
+        'valid_password',
+        'incorrect_password',
+        'invalid_old_password',
+        'empty_old_password',
+        'required_old_password',
+        'invalid_new_password',
+        'empty_new_password',
+        'required_new_password',
+        'inactive_user',
+        'unauthorized_user'
+    ],
+    indirect=True,
+)
+def test_change_password(change_password_data, api_client):
+    status_code, user, access, data = change_password_data()
+
+    client = api_client(token=access)
+    url = reverse('change-password')
+    resp = client.put(url, data, format='json')
+    assert resp.status_code == status_code
+
+    if resp.status_code == status.HTTP_200_OK:
+        user.refresh_from_db()
+        assert user.check_password(data['new_password'])
+
+        client = api_client()
+        login_url = reverse('login')
+        login_data = {
+            'username': user.username,
+            'password': data['new_password']
+        }
+
+        login_resp = client.post(login_url, login_data, format='json')
+
+        resp_json = login_resp.json()
+        assert sorted(resp_json.keys()) == sorted(['access', 'refresh'])
+
+
+@pytest.fixture
+def logout_data(request, user_factory, api_client, tokens):
+    def valid_without_stored_tokens():
+        user = user_factory.create()
+        access, _ = tokens(user)
+        return 200, api_client(access), user, access
+
+    def valid_with_stored_tokens():
+        user = user_factory.create()
+        access, _ = tokens(user)
+        return 200, api_client(access), user, access
+
+    def invalid_with_unauthorized_user():
+        return 401, api_client(), MagicMock(id="f0f9f100-3abd-4bbf-88ad-0cfdd6953aca"), None
+
+    data = {
+        'valid_without_stored_tokens': valid_without_stored_tokens,
+        'valid_with_stored_tokens': valid_with_stored_tokens,
+        'invalid_with_unauthorized_user': invalid_with_unauthorized_user,
+    }
+    return data[request.param]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'logout_data',
+    [
+        'valid_without_stored_tokens',
+        'valid_with_stored_tokens',
+        'invalid_with_unauthorized_user',
+    ],
+    indirect=True,
+)
+def test_logout(logout_data, mocker, fake_redis, request, tokens):
+    status_code, client, user, access = logout_data()
+    test_name = request.node.name
+
+    mocker.patch('users.services.TokenService.get_redis_client', return_value=fake_redis)
+
+    # add tokens to fake_redis
+    if test_name == 'test_logout[valid_with_stored_tokens]':
+        _, refresh = tokens(user)
+        access_token_key = f"user:{user.id}:{TokenType.ACCESS}"
+        refresh_token_key = f"user:{user.id}:{TokenType.REFRESH}"
+        fake_redis.sadd(access_token_key, access)
+        fake_redis.sadd(refresh_token_key, str(refresh))
+
+    # users-me get data
+    if test_name == 'test_logout[valid_with_stored_tokens]':
+        url = reverse('users-me')
+        resp = client.get(url)
+        assert resp.status_code == status_code
+
+    # logout
+    resp = client.post(reverse('logout'))
+    assert resp.status_code == status_code
+
+    # users-me get data after logout
+    if status_code == 200:
+        resp = client.get(reverse('users-me'))
+        assert resp.status_code == 401
+
+    if test_name == 'test_logout[valid_with_stored_tokens]':
+        access_token_key = f"user:{user.id}:{TokenType.ACCESS}"
+        refresh_token_key = f"user:{user.id}:{TokenType.REFRESH}"
+        assert fake_redis.smembers(access_token_key) == {b'fake_token'}
+        assert fake_redis.smembers(refresh_token_key) == {b'fake_token'}

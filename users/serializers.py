@@ -61,9 +61,9 @@ class LoginSerializer(serializers.Serializer):
         if username and password:
             user = authenticate(username=username, password=password)
             if user is None:
-                raise serializers.ValidationError('Invalid login credentials')
+                raise serializers.ValidationError('Kirish maʼlumotlari notoʻgʻri')
         else:
-            raise serializers.ValidationError('Both "username" and "password" are required')
+            raise serializers.ValidationError("Foydalanuvchi nomi va parol ham talab qilinadi")
 
         data['user'] = user
         return data
@@ -82,3 +82,13 @@ class ValidationErrorSerializer(serializers.Serializer):
         if isinstance(instance, dict):
             return instance
         return super().to_representation(instance)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate(self, data):
+        if data['new_password'] == data['old_password']:
+            raise serializers.ValidationError("Yangi va eski parollar bir xil bo'lmasligi kerak")
+        return data

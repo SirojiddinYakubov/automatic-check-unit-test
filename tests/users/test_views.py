@@ -423,10 +423,10 @@ def user_update_data(request, user_factory, tokens):
             200,
             access,
             {
-                'first_name': 'ABDULAZIZ',
-                'last_name': 'KOMILOV',
-                'middle_name': 'TEST',
-                'email': 'TESTS@TESTS.COM',
+                'first_name': 'abdulaziz',
+                'last_name': 'komilov',
+                'middle_name': 'sobirovich',
+                'email': 'test@uz.uz',
                 'avatar': (
                     b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
                     b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'

@@ -202,8 +202,9 @@ DJANGORESIZED_DEFAULT_NORMALIZE_ROTATION = True
 
 REDIS_HOST = config('REDIS_HOST', default='localhost')
 REDIS_PORT = config('REDIS_PORT', default='6379')
+REDIS_DB = config('REDIS_DB', default='1')
 
-REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/1'
+REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
 
 CACHES = {
     'default': {

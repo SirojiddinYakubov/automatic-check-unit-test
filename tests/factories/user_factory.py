@@ -13,6 +13,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
 
+    username = factory.LazyFunction(fake.user_name)
     email = factory.LazyFunction(fake.email)
     first_name = fake.first_name()
     last_name = fake.last_name()

@@ -105,32 +105,10 @@ class ForgotPasswordSerializer(serializers.Serializer):
         return value
 
 
-class ForgotPasswordVerifySerializer(serializers.Serializer):
-    token = serializers.UUIDField()
-    email = serializers.EmailField()
-
-    def validate(self, data):
-        try:
-            reset_token = PasswordResetToken.objects.get(token=data['token'])
-        except PasswordResetToken.DoesNotExist:
-            raise ValidationError("Token yaroqsiz.")
-
-        if reset_token.user.email != data['email']:
-            raise ValidationError("Elektron pochta tokenga mos kelmaydi.")
-
-        if reset_token.is_expired():
-            raise ValidationError("Token muddati tugagan.")
-
-        data['reset_token_instance'] = reset_token
-        return data
-
-
-
 class NewPasswordSerializer(serializers.Serializer):
-    token = serializers.UUIDField()
-    email = serializers.EmailField()
     new_password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
+    token = serializers.CharField(write_only=True)
 
     def validate(self, data):
         if data['new_password'] != data['confirm_password']:
@@ -140,9 +118,6 @@ class NewPasswordSerializer(serializers.Serializer):
             reset_token = PasswordResetToken.objects.get(token=data['token'])
         except PasswordResetToken.DoesNotExist:
             raise ValidationError("Token yaroqsiz.")
-
-        if reset_token.user.email != data['email']:
-            raise ValidationError("Elektron pochta tokenga mos kelmaydi.")
 
         if reset_token.is_expired():
             raise ValidationError("Token muddati tugagan.")

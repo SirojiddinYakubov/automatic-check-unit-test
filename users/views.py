@@ -1,5 +1,7 @@
 import random
 from django.conf import settings
+from django.urls import reverse
+from django.shortcuts import get_object_or_404
 from rest_framework import status, permissions, generics, parsers
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,7 +20,6 @@ from .serializers import (
     UserUpdateSerializer,
     ChangePasswordSerializer,
     ForgotPasswordSerializer,
-    ForgotPasswordVerifySerializer,
     NewPasswordSerializer, )
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -235,34 +236,15 @@ class ForgotPasswordView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = User.objects.get(email=serializer.validated_data['email'])
+        user = get_object_or_404(User, email=serializer.validated_data['email'])
         reset_token = PasswordResetToken.objects.create(user=user)
 
-        Email.send_email(user, reset_token.token)
-        return Response({"detail": "Parolni tiklash tokeni emailga yuborildi."}, status=status.HTTP_200_OK)
+        reset_url = request.build_absolute_uri(
+            reverse('new-password') + f"?token={reset_token.token}"
+        )
 
-
-@extend_schema_view(
-    post=extend_schema(
-        summary="Forgot Password Verify",
-        request=ForgotPasswordVerifySerializer,
-        responses={
-            200: ValidationErrorSerializer,
-            401: ValidationErrorSerializer
-        }
-    )
-)
-class ForgotPasswordVerifyView(generics.GenericAPIView):
-    serializer_class = ForgotPasswordVerifySerializer
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        reset_token = serializer.validated_data['reset_token_instance']
-        reset_token.verified = True
-        reset_token.save()
-        return Response({"detail": "Token tasdiqlandi."}, status=status.HTTP_200_OK)
+        Email.send_email(user, reset_url)
+        return Response({"detail": "Parolni tiklash havolasi elektron pochtangizga yuborildi."}, status=status.HTTP_200_OK)
 
 
 @extend_schema_view(
@@ -279,8 +261,22 @@ class NewPasswordView(generics.GenericAPIView):
     serializer_class = NewPasswordSerializer
     permission_classes = [AllowAny]
 
+    def get(self, request, *args, **kwargs):
+        token = request.query_params.get('token')
+        if not token:
+            return Response({"detail": "Token mavjud emas."}, status=status.HTTP_400_BAD_REQUEST)
+
+        reset_token = get_object_or_404(PasswordResetToken, token=token)
+        reset_token.verified = True
+        reset_token.save()
+
+        if reset_token.is_expired():
+            return Response({"detail": "Token muddati tugagan."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"detail": "Token tasdiqlandi."}, status=status.HTTP_200_OK)
+
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({"detail": "Parol qayta tiklandi."}, status=status.HTTP_200_OK)
+        return Response({"detail": "Parol muvaffaqiyatli tiklandi."}, status=status.HTTP_200_OK)

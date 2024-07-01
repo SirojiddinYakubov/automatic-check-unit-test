@@ -7,8 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 
 from .enums import TokenType
-from .serializers import UserSerializer, LoginSerializer, ValidationErrorSerializer, TokenResponseSerializer, \
-    UserUpdateSerializer, ChangePasswordSerializer
+from .serializers import (UserSerializer, LoginSerializer, ValidationErrorSerializer, TokenResponseSerializer,
+    UserUpdateSerializer, ChangePasswordSerializer, )
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_redis import get_redis_connection
@@ -148,7 +148,7 @@ class LogoutView(generics.GenericAPIView):
 
 
 @extend_schema_view(
-    post=extend_schema(
+    put=extend_schema(
         summary="Change user password",
         request=ChangePasswordSerializer,
         responses={
@@ -159,9 +159,10 @@ class LogoutView(generics.GenericAPIView):
 )
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = ChangePasswordSerializer
 
-    def post(self, request, *args, **kwargs):
-        serializer = ChangePasswordSerializer(data=request.data)
+    def put(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         user = authenticate(
@@ -176,20 +177,20 @@ class ChangePasswordView(APIView):
 
             update_session_auth_hash(request, user)
 
+            tokens = UserService.create_tokens(user)
+
             TokenService.add_token_to_redis(
                 request.user.id,
-                'fake_token',
+                tokens['access'],
                 TokenType.ACCESS,
                 settings.SIMPLE_JWT.get("ACCESS_TOKEN_LIFETIME"),
             )
             TokenService.add_token_to_redis(
                 request.user.id,
-                'fake_token',
+                tokens['refresh'],
                 TokenType.REFRESH,
                 settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
             )
-
-            tokens = UserService.create_tokens(user)
 
             return Response({
                 "access": tokens['access'],

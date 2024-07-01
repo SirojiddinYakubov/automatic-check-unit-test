@@ -5,12 +5,21 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate, update_session_auth_hash
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from .models import PasswordResetToken
 from .utils import Email
 
 from .enums import TokenType
-from .serializers import (UserSerializer, LoginSerializer, ValidationErrorSerializer, TokenResponseSerializer,
-    UserUpdateSerializer, ChangePasswordSerializer, )
+from .serializers import (
+    UserSerializer,
+    LoginSerializer,
+    ValidationErrorSerializer,
+    TokenResponseSerializer,
+    UserUpdateSerializer,
+    ChangePasswordSerializer,
+    ForgotPasswordSerializer,
+    ForgotPasswordVerifySerializer,
+    NewPasswordSerializer, )
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_redis import get_redis_connection
@@ -207,3 +216,71 @@ class ChangePasswordView(APIView):
             return Response({
                 "detail": "Eski parol xato."
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Forgot Password",
+        request=ChangePasswordSerializer,
+        responses={
+            200: ForgotPasswordSerializer,
+            401: ValidationErrorSerializer
+        }
+    )
+)
+class ForgotPasswordView(generics.GenericAPIView):
+    serializer_class = ForgotPasswordSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = User.objects.get(email=serializer.validated_data['email'])
+        reset_token = PasswordResetToken.objects.create(user=user)
+
+        Email.send_email(user, reset_token.token)
+        return Response({"detail": "Parolni tiklash tokeni emailga yuborildi."}, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Forgot Password Verify",
+        request=ChangePasswordSerializer,
+        responses={
+            200: ForgotPasswordVerifySerializer,
+            401: ValidationErrorSerializer
+        }
+    )
+)
+class ForgotPasswordVerifyView(generics.GenericAPIView):
+    serializer_class = ForgotPasswordVerifySerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reset_token = serializer.validated_data['reset_token_instance']
+        reset_token.verified = True
+        reset_token.save()
+        return Response({"detail": "Token tasdiqlandi."}, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="New Password",
+        request=ChangePasswordSerializer,
+        responses={
+            200: NewPasswordSerializer,
+            401: ValidationErrorSerializer
+        }
+    )
+)
+class NewPasswordView(generics.GenericAPIView):
+    serializer_class = NewPasswordSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"detail": "Parol qayta tiklandi."}, status=status.HTTP_200_OK)

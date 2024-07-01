@@ -5,12 +5,12 @@ from django.template.loader import render_to_string
 
 class Email:
     @staticmethod
-    def send_email(user, code):
+    def send_email(user, token):
 
         subject = 'Welcome to Our Service!'
         message = render_to_string('emails/email_template.html', {
             'user': user,
-            'code': code
+            'token': token
         })
 
         email = EmailMessage(

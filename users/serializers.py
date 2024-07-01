@@ -2,6 +2,8 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from .models import PasswordResetToken
 
 from users.errors import BIRTH_YEAR_ERROR_MSG
 
@@ -92,3 +94,67 @@ class ChangePasswordSerializer(serializers.Serializer):
         if data['new_password'] == data['old_password']:
             raise serializers.ValidationError("Yangi va eski parollar bir xil bo'lmasligi kerak")
         return data
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise ValidationError("Email topilmadi.")
+        return value
+
+
+class ForgotPasswordVerifySerializer(serializers.Serializer):
+    token = serializers.UUIDField()
+    email = serializers.EmailField()
+
+    def validate(self, data):
+        try:
+            reset_token = PasswordResetToken.objects.get(token=data['token'])
+        except PasswordResetToken.DoesNotExist:
+            raise ValidationError("Token yaroqsiz.")
+
+        if reset_token.user.email != data['email']:
+            raise ValidationError("Elektron pochta tokenga mos kelmaydi.")
+
+        if reset_token.is_expired():
+            raise ValidationError("Token muddati tugagan.")
+
+        data['reset_token_instance'] = reset_token
+        return data
+
+
+
+class NewPasswordSerializer(serializers.Serializer):
+    token = serializers.UUIDField()
+    email = serializers.EmailField()
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise ValidationError("Parollar mos kelmaydi.")
+
+        try:
+            reset_token = PasswordResetToken.objects.get(token=data['token'])
+        except PasswordResetToken.DoesNotExist:
+            raise ValidationError("Token yaroqsiz.")
+
+        if reset_token.user.email != data['email']:
+            raise ValidationError("Elektron pochta tokenga mos kelmaydi.")
+
+        if reset_token.is_expired():
+            raise ValidationError("Token muddati tugagan.")
+
+        if reset_token.verified is False:
+            raise ValidationError("Token tasdiqlanmagan.")
+
+        return data
+
+    def save(self):
+        reset_token = PasswordResetToken.objects.get(token=self.validated_data['token'])
+        user = reset_token.user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        reset_token.delete()

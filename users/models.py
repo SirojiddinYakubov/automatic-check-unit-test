@@ -1,5 +1,5 @@
 import os
-
+import uuid
 from django.conf import settings
 from django.contrib.postgres.indexes import HashIndex
 from django.core import validators
@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django_resized import ResizedImageField
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 from users.errors import BIRTH_YEAR_ERROR_MSG
 
@@ -70,3 +71,17 @@ class CustomUser(AbstractUser):
     def full_name(self):
         """ Returns the user's full name. """
         return f"{self.last_name} {self.first_name} {self.middle_name}"
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    token = models.UUIDField(default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    verified = models.BooleanField(default=False)
+
+    def is_expired(self):
+        expiration_time = timezone.timedelta(minutes=2)
+        return timezone.now() > self.created_at + expiration_time
+
+    def __str__(self):
+        return f"{self.user.email} ning parolni tiklash tokeni."

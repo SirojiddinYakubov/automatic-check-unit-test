@@ -10,10 +10,7 @@ User = get_user_model()
 def change_password_data(request, user_factory, tokens):
     old_password = 'strong_password_123'
     new_password = 'new_password_123'
-    username = 'abdulaziz123'
-    user = user_factory.create()
-    user.username = username
-    user.set_password(old_password)
+    user = user_factory.create(password=old_password)
     user.save()
 
     access, _ = tokens(user)
@@ -150,5 +147,5 @@ def test_change_password(change_password_data, api_client):
 
         login_resp = client.post(login_url, login_data, format='json')
 
-        assert login_resp.status_code == status.HTTP_200_OK
-        assert 'access' in login_resp.data
+        resp_json = login_resp.json()
+        assert sorted(resp_json.keys()) == sorted(['access', 'refresh'])

@@ -221,9 +221,9 @@ class ChangePasswordView(APIView):
 @extend_schema_view(
     post=extend_schema(
         summary="Forgot Password",
-        request=ChangePasswordSerializer,
+        request=ForgotPasswordSerializer,
         responses={
-            200: ForgotPasswordSerializer,
+            200: ValidationErrorSerializer,
             401: ValidationErrorSerializer
         }
     )
@@ -245,9 +245,9 @@ class ForgotPasswordView(generics.GenericAPIView):
 @extend_schema_view(
     post=extend_schema(
         summary="Forgot Password Verify",
-        request=ChangePasswordSerializer,
+        request=ForgotPasswordVerifySerializer,
         responses={
-            200: ForgotPasswordVerifySerializer,
+            200: ValidationErrorSerializer,
             401: ValidationErrorSerializer
         }
     )
@@ -268,9 +268,9 @@ class ForgotPasswordVerifyView(generics.GenericAPIView):
 @extend_schema_view(
     post=extend_schema(
         summary="New Password",
-        request=ChangePasswordSerializer,
+        request=NewPasswordSerializer,
         responses={
-            200: NewPasswordSerializer,
+            200: ValidationErrorSerializer,
             401: ValidationErrorSerializer
         }
     )

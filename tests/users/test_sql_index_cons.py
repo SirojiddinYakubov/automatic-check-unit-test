@@ -11,8 +11,9 @@ User = get_user_model()
 
 @pytest.mark.django_db
 def test_custom_user_meta_class():
+    meta = User._meta
 
-    birth_year_field = User._meta.get_field('birth_year')
+    birth_year_field = meta.get_field('birth_year')
     assert isinstance(birth_year_field, models.IntegerField)
     assert birth_year_field.validators[0].limit_value == settings.BIRTH_YEAR_MIN
     assert birth_year_field.validators[1].limit_value == settings.BIRTH_YEAR_MAX
@@ -28,16 +29,19 @@ def test_custom_user_meta_class():
     user = User(birth_year=(settings.BIRTH_YEAR_MIN + settings.BIRTH_YEAR_MAX) // 2)
     user.clean()
 
-    indexes = User._meta.indexes
-    assert any(index.name == 'customuser_first_name_hash_idx' for index in indexes)
-    assert any(index.name == 'customuser_last_name_hash_idx' for index in indexes)
-    assert any(index.name == 'customuser_middle_name_hash_idx' for index in indexes)
-    assert any(index.name == 'customuser_username_idx' for index in indexes)
+    index_names = {index.name for index in meta.indexes}
+    expected_indexes = {
+        'customuser_first_name_hash_idx',
+        'customuser_last_name_hash_idx',
+        'customuser_middle_name_hash_idx',
+        'customuser_username_idx'
+    }
+    assert expected_indexes.issubset(index_names)
 
 
-    constraints = User._meta.constraints
-    assert any(constraint.name == 'check_birth_year_range' for constraint in constraints)
-
+    constraint_names = {constraint.name for constraint in meta.constraints}
+    expected_constraints = {'check_birth_year_range'}
+    assert expected_constraints.issubset(constraint_names)
 
 
 VALID_BIRTH_YEAR = (settings.BIRTH_YEAR_MIN + settings.BIRTH_YEAR_MAX) // 2

@@ -1,44 +1,112 @@
 import pytest
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from users.services import UserService
+from rest_framework import status
 
 User = get_user_model()
 
 
 @pytest.fixture
-def user_password(request):
+def change_password_data(request, user_factory, tokens):
+    old_password = 'strong_password_123'
+    new_password = 'new_password_123'
+    username = 'abdulaziz123'
+    user = user_factory.create()
+    user.username = username
+    user.set_password(old_password)
+    user.save()
+
+    access, _ = tokens(user)
+
     def valid_password():
         return (
-            200,
+            200, user, access,
             {
-                'old_password': 'password123',
-                'new_password': 'new_password'
+                'old_password': old_password,
+                'new_password': new_password
             }
         )
 
-    def valid_password2():
+    def incorrect_password():
         return (
-            200,
+            400, user, access,
             {
-                'old_password': 'old_password',
-                'new_password': 'new_password'
+                'old_password': '<PASSWORD>',
+                'new_password': new_password
             }
         )
 
-    def empty_data():
+    def invalid_old_password():
         return (
-            400,
+            400, user, access,
+            {
+                'old_password': 'asdf*&^%',
+                'new_password': new_password
+            },
+        )
+
+    def empty_old_password():
+        return (
+            400, user, access,
             {
                 'old_password': '',
-                'new_password': ''
-            }
+                'new_password': new_password
+            },
         )
+
+    def required_old_password():
+        return (
+            400, user, access,
+            {
+                'new_password': new_password
+            },
+        )
+
+    def invalid_new_password():
+        return (
+            400, user, access,
+            {
+                'old_password': old_password,
+                'new_password': old_password
+            },
+        )
+
+    def empty_new_password():
+        return (
+            400, user, access,
+            {
+                'old_password': old_password,
+                'new_password': ''
+            },
+        )
+
+    def required_new_password():
+        return (
+            400, user, access,
+            {
+                'old_password': old_password,
+            },
+        )
+
+    def inactive_user():
+        user.is_active = False
+        user.save()
+        return 401, user, 'fake-token', {}
+
+    def unauthorized_user():
+        return 401, user, 'fake-token', {}
 
     data = {
         'valid_password': valid_password,
-        'valid_password2': valid_password2,
-        'empty_data': empty_data
+        'incorrect_password': incorrect_password,
+        'invalid_old_password': invalid_old_password,
+        'empty_old_password': empty_old_password,
+        'required_old_password': required_old_password,
+        'invalid_new_password': invalid_new_password,
+        'empty_new_password': empty_new_password,
+        'required_new_password': required_new_password,
+        'inactive_user': inactive_user,
+        'unauthorized_user': unauthorized_user
     }
     return data[request.param]
 
@@ -46,30 +114,41 @@ def user_password(request):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    'user_password',
+    'change_password_data',
     [
         'valid_password',
-        'valid_password2',
-        'empty_data'
+        'incorrect_password',
+        'invalid_old_password',
+        'empty_old_password',
+        'required_old_password',
+        'invalid_new_password',
+        'empty_new_password',
+        'required_new_password',
+        'inactive_user',
+        'unauthorized_user'
     ],
     indirect=True,
 )
-def test_change_password(api_client, user_factory, user_password):
-    status_code, data = user_password()
+def test_change_password(change_password_data, api_client):
+    status_code, user, access, data = change_password_data()
 
-    user = user_factory.create()
-    user.set_password(data['old_password'])
-    user.save()
+    client = api_client(token=access)
+    url = reverse('change-password')
+    resp = client.post(url, data, format='json')
+    assert resp.status_code == status_code
 
-    tokens = UserService.create_tokens(user)
-    access_token = tokens['access']
+    if resp.status_code == status.HTTP_200_OK:
+        user.refresh_from_db()
+        assert user.check_password(data['new_password'])
 
-    change_password_url = reverse('change-password')
-    new_password_data = {
-        'old_password': data['old_password'],
-        'new_password': data['new_password']
-    }
-    response = api_client(token=access_token).post(change_password_url, data=new_password_data)
+        client = api_client()
+        login_url = reverse('login')
+        login_data = {
+            'username': user.username,
+            'password': data['new_password']
+        }
 
-    assert response.status_code == status_code, f"Failed to change password. Response: {response.content}"
-    assert User.objects.get(username=user.username).check_password(data['new_password']), "Parol o'zgartirilmadi"
+        login_resp = client.post(login_url, login_data, format='json')
+
+        assert login_resp.status_code == status.HTTP_200_OK
+        assert 'access' in login_resp.data

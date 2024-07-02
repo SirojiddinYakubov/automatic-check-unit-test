@@ -3,7 +3,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 
 
-class SendEmailServise:
+class SendEmailService:
     @staticmethod
     def send_email(email, otp_code):
         try:

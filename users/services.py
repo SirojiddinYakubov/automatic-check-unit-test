@@ -133,3 +133,13 @@ class OTPService:
     @staticmethod
     def generate_token() -> str:
         return str(uuid.uuid4())
+
+
+def delete_email_to_redis(email):
+    OTPService.get_redis_conn().delete(f"{email}:otp")
+
+def check_otp(email, otp_code, otp_secret):
+    OTPService.check_otp(email, otp_code, otp_secret)
+
+def generate_otp(email, expire_in):
+    return OTPService.generate_otp(email=email, expire_in=expire_in)

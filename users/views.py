@@ -1,4 +1,3 @@
-import random
 from django.conf import settings
 from rest_framework import status, permissions, generics, parsers
 from rest_framework.response import Response
@@ -6,7 +5,7 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate, update_session_auth_hash
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
-from .utils import SendEmailServise
+from .utils import SendEmailService
 
 from .enums import TokenType
 from .serializers import (
@@ -16,17 +15,21 @@ from .serializers import (
     TokenResponseSerializer,
     UserUpdateSerializer,
     ChangePasswordSerializer,
-    ForgotPasswordSerializer,
+    ForgotPasswordRequestSerializer,
     ForgotPasswordVerifySerializer,
-    ResetPasswordSerializer,
-    TokenSerializer,
-    EmailSecretSerializer, )
+    ResetPasswordResponseSerializer,
+    ForgotPasswordVerifyResponseSerializer,
+    ForgotPasswordResponseSerializer, )
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_redis import get_redis_connection
 from secrets import token_urlsafe
 from django.contrib.auth.hashers import make_password
-from .services import TokenService, UserService, OTPService, OTPException
+from .services import (
+    TokenService, UserService,
+    OTPService, OTPException,
+    delete_email_to_redis, check_otp,
+    generate_otp, )
 
 User = get_user_model()
 redis_conn = OTPService.get_redis_conn()
@@ -118,11 +121,6 @@ class UsersMe(generics.RetrieveAPIView, generics.UpdateAPIView):
         return self.request.user
 
     def get_serializer_class(self):
-
-        user = self.request.user
-        code = random.randint(10000, 99999)
-        SendEmailServise.send_email(user, code)
-
         if self.request.method == 'PATCH':
             return UserUpdateSerializer
         return UserSerializer
@@ -224,16 +222,16 @@ class ChangePasswordView(APIView):
 @extend_schema_view(
     post=extend_schema(
         summary="Forgot Password",
-        request=ForgotPasswordSerializer,
+        request=ForgotPasswordRequestSerializer,
         responses={
-            200: EmailSecretSerializer,
+            200: ForgotPasswordResponseSerializer,
             401: ValidationErrorSerializer
         }
     )
 )
 class ForgotPasswordView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
-    serializer_class = ForgotPasswordSerializer
+    serializer_class = ForgotPasswordRequestSerializer
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):
@@ -245,18 +243,18 @@ class ForgotPasswordView(generics.CreateAPIView):
             raise Exception(404, "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")
 
         try:
-            otp_code, otp_secret = OTPService.generate_otp(email=email, expire_in=2 * 60)
+            otp_code, otp_secret = generate_otp(email=email, expire_in=2 * 60)
         except OTPException as e:
             return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
-        res_code = SendEmailServise.send_email(email, otp_code)
+        res_code = SendEmailService.send_email(email, otp_code)
         if res_code == 200:
             return Response({
                 "email": email,
                 "otp_secret": otp_secret,
             })
         else:
-            OTPService.get_redis_conn().delete(f"{email}:otp")
+            delete_email_to_redis(email=email)
             return Response({"detail": "Email yuborishda nimadir noto'g'ri"}, status=res_code)
 
 
@@ -265,7 +263,7 @@ class ForgotPasswordView(generics.CreateAPIView):
         summary="Forgot Password Verify",
         request=ForgotPasswordVerifySerializer,
         responses={
-            200: TokenSerializer,
+            200: ForgotPasswordVerifyResponseSerializer,
             401: ValidationErrorSerializer
         }
     )
@@ -286,7 +284,7 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
             return Response({"detail": "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            OTPService.check_otp(email, otp_code, otp_secret)
+            check_otp(email, otp_code, otp_secret)
         except OTPException as e:
             return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -300,7 +298,7 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
 @extend_schema_view(
     patch=extend_schema(
         summary="Reset Password",
-        request=ResetPasswordSerializer,
+        request=ResetPasswordResponseSerializer,
         responses={
             200: TokenResponseSerializer,
             401: ValidationErrorSerializer
@@ -308,7 +306,7 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
     )
 )
 class ResetPasswordView(generics.UpdateAPIView):
-    serializer_class = ResetPasswordSerializer
+    serializer_class = ResetPasswordResponseSerializer
     permission_classes = [permissions.AllowAny]
     http_method_names = ['patch']
     authentication_classes = []

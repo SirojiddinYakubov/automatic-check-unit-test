@@ -95,8 +95,8 @@ class ChangePasswordSerializer(serializers.Serializer):
         return data
 
 
-class ForgotPasswordSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+class ForgotPasswordRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
 
     def validate_email(self, value):
         if not User.objects.filter(email=value).exists():
@@ -104,21 +104,21 @@ class ForgotPasswordSerializer(serializers.Serializer):
         return value
 
 
+class ForgotPasswordResponseSerializer(serializers.Serializer):
+    email = serializers.CharField(required=True)
+    otp_secret = serializers.CharField(required=True)
+
+
 class ForgotPasswordVerifySerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    otp_code = serializers.CharField(max_length=6)
-    otp_secret = serializers.CharField(max_length=50)
+    email = serializers.EmailField(required=True)
+    otp_code = serializers.CharField(required=True, max_length=6)
+    otp_secret = serializers.CharField(required=True, max_length=50)
 
 
-class ResetPasswordSerializer(serializers.Serializer):
-    token = serializers.CharField()
-    password = serializers.CharField(min_length=8, write_only=True)
+class ForgotPasswordVerifyResponseSerializer(serializers.Serializer):
+    token = serializers.CharField(required=True)
 
 
-class TokenSerializer(serializers.Serializer):
-    token = serializers.CharField()
-
-
-class EmailSecretSerializer(serializers.Serializer):
-    email = serializers.CharField()
-    otp_secret = serializers.CharField()
+class ResetPasswordResponseSerializer(serializers.Serializer):
+    token = serializers.CharField(required=True)
+    password = serializers.CharField(required=True, min_length=8, write_only=True)

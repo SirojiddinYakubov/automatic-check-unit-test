@@ -19,7 +19,8 @@ from .serializers import (
     ForgotPasswordSerializer,
     ForgotPasswordVerifySerializer,
     ResetPasswordSerializer,
-    TokenSerializer, )
+    TokenSerializer,
+    EmailSecretSerializer, )
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_redis import get_redis_connection
@@ -225,7 +226,7 @@ class ChangePasswordView(APIView):
         summary="Forgot Password",
         request=ForgotPasswordSerializer,
         responses={
-            200: ValidationErrorSerializer,
+            200: EmailSecretSerializer,
             401: ValidationErrorSerializer
         }
     )
@@ -244,15 +245,15 @@ class ForgotPasswordView(generics.CreateAPIView):
             raise Exception(404, "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")
 
         try:
-            otp_code, code = OTPService.generate_otp(email=email, expire_in=2 * 60)
+            otp_code, otp_secret = OTPService.generate_otp(email=email, expire_in=2 * 60)
         except OTPException as e:
             return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
         res_code = Email.send_email(email, otp_code)
         if res_code == 200:
             return Response({
-                "detail": email,
-                "code": code,
+                "email": email,
+                "otp_secret": otp_secret,
             })
         else:
             OTPService.get_redis_conn().delete(f"{email}:otp")
@@ -279,13 +280,13 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         otp_code = serializer.validated_data['otp_code']
         email = serializer.validated_data['email']
-        code = serializer.validated_data['code']
+        otp_secret = serializer.validated_data['otp_secret']
         user_ = User.objects.filter(email=email, is_active=True)
         if not user_.exists():
             return Response({"detail": "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            OTPService.check_otp(email, otp_code, code)
+            OTPService.check_otp(email, otp_code, otp_secret)
         except OTPException as e:
             return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 

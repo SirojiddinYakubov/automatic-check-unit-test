@@ -16,7 +16,7 @@ from .serializers import (
     UserUpdateSerializer,
     ChangePasswordSerializer,
     ForgotPasswordRequestSerializer,
-    ForgotPasswordVerifySerializer,
+    ForgotPasswordVerifyRequestSerializer,
     ResetPasswordResponseSerializer,
     ForgotPasswordVerifyResponseSerializer,
     ForgotPasswordResponseSerializer, )
@@ -27,12 +27,9 @@ from secrets import token_urlsafe
 from django.contrib.auth.hashers import make_password
 from .services import (
     TokenService, UserService,
-    OTPService, OTPException,
-    delete_email_to_redis, check_otp,
-    generate_otp, )
+    OTPService, OTPException, )
 
 User = get_user_model()
-redis_conn = OTPService.get_redis_conn()
 
 
 @extend_schema_view(
@@ -243,7 +240,7 @@ class ForgotPasswordView(generics.CreateAPIView):
             raise Exception(404, "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")
 
         try:
-            otp_code, otp_secret = generate_otp(email=email, expire_in=2 * 60)
+            otp_code, otp_secret = OTPService.generate_otp(email=email, expire_in=2 * 60)
         except OTPException as e:
             return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -254,14 +251,14 @@ class ForgotPasswordView(generics.CreateAPIView):
                 "otp_secret": otp_secret,
             })
         else:
-            delete_email_to_redis(email=email)
+            OTPService.get_redis_conn().delete(email=email)
             return Response({"detail": "Email yuborishda nimadir noto'g'ri"}, status=res_code)
 
 
 @extend_schema_view(
     post=extend_schema(
         summary="Forgot Password Verify",
-        request=ForgotPasswordVerifySerializer,
+        request=ForgotPasswordVerifyRequestSerializer,
         responses={
             200: ForgotPasswordVerifyResponseSerializer,
             401: ValidationErrorSerializer
@@ -270,21 +267,22 @@ class ForgotPasswordView(generics.CreateAPIView):
 )
 class ForgotPasswordVerifyView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
-    serializer_class = ForgotPasswordVerifySerializer
+    serializer_class = ForgotPasswordVerifyRequestSerializer
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):
+        redis_conn = OTPService.get_redis_conn()
+        otp_secret = kwargs.get('otp_secret')
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         otp_code = serializer.validated_data['otp_code']
         email = serializer.validated_data['email']
-        otp_secret = serializer.validated_data['otp_secret']
         users = User.objects.filter(email=email, is_active=True)
         if not users.exists():
             return Response({"detail": "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            check_otp(email, otp_code, otp_secret)
+            OTPService.check_otp(email, otp_code, otp_secret)
         except OTPException as e:
             return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -312,6 +310,7 @@ class ResetPasswordView(generics.UpdateAPIView):
     authentication_classes = []
 
     def patch(self, request, *args, **kwargs):
+        redis_conn = OTPService.get_redis_conn()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -332,7 +331,23 @@ class ResetPasswordView(generics.UpdateAPIView):
         user.set_password(password)
         user.save()
 
+        update_session_auth_hash(request, user)
+
         tokens = UserService.create_tokens(user)
+
+        TokenService.add_token_to_redis(
+            request.user.id,
+            tokens['access'],
+            TokenType.ACCESS,
+            settings.SIMPLE_JWT.get("ACCESS_TOKEN_LIFETIME"),
+        )
+        TokenService.add_token_to_redis(
+            request.user.id,
+            tokens['refresh'],
+            TokenType.REFRESH,
+            settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
+        )
+
         redis_conn.delete(token_hash)
 
         return Response(tokens, status=status.HTTP_200_OK)

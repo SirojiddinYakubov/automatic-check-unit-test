@@ -3,13 +3,13 @@ from django.conf import settings
 from django.template.loader import render_to_string
 
 
-class Email:
+class SendEmailServise:
     @staticmethod
-    def send_email(user, otp_code):
+    def send_email(email, otp_code):
         try:
             subject = 'Welcome to Our Service!'
             message = render_to_string('emails/email_template.html', {
-                'user': user,
+                'email': email,
                 'otp_code': otp_code
             })
 
@@ -17,7 +17,7 @@ class Email:
                 subject,
                 message,
                 settings.EMAIL_HOST_USER,
-                [settings.EMAIL_HOST_USER]
+                [email]
             )
             email.content_subtype = 'html'
             email.send(fail_silently=False)

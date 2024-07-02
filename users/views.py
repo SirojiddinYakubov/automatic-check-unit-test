@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate, update_session_auth_hash
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
-from .utils import Email
+from .utils import SendEmailServise
 
 from .enums import TokenType
 from .serializers import (
@@ -121,7 +121,7 @@ class UsersMe(generics.RetrieveAPIView, generics.UpdateAPIView):
 
         user = self.request.user
         code = random.randint(10000, 99999)
-        Email.send_email(user, code)
+        SendEmailServise.send_email(user, code)
 
         if self.request.method == 'PATCH':
             return UserUpdateSerializer
@@ -240,8 +240,8 @@ class ForgotPasswordView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
-        user_ = User.objects.filter(email=email, is_active=True)
-        if not user_.exists():
+        users = User.objects.filter(email=email, is_active=True)
+        if not users.exists():
             raise Exception(404, "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")
 
         try:
@@ -249,7 +249,7 @@ class ForgotPasswordView(generics.CreateAPIView):
         except OTPException as e:
             return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
-        res_code = Email.send_email(email, otp_code)
+        res_code = SendEmailServise.send_email(email, otp_code)
         if res_code == 200:
             return Response({
                 "email": email,
@@ -281,8 +281,8 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
         otp_code = serializer.validated_data['otp_code']
         email = serializer.validated_data['email']
         otp_secret = serializer.validated_data['otp_secret']
-        user_ = User.objects.filter(email=email, is_active=True)
-        if not user_.exists():
+        users = User.objects.filter(email=email, is_active=True)
+        if not users.exists():
             return Response({"detail": "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
@@ -324,13 +324,13 @@ class ResetPasswordView(generics.UpdateAPIView):
             return Response({"detail": "Token yaroqsiz"}, status=status.HTTP_400_BAD_REQUEST)
 
         email = email.decode()
-        user_ = User.objects.filter(email=email, is_active=True)
+        users = User.objects.filter(email=email, is_active=True)
 
-        if not user_.exists():
+        if not users.exists():
             return Response({"detail": "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
 
         password = serializer.validated_data['password']
-        user = user_.first()
+        user = users.first()
         user.set_password(password)
         user.save()
 

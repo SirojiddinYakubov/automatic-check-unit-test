@@ -3,7 +3,6 @@ from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from .models import PasswordResetToken
 
 from users.errors import BIRTH_YEAR_ERROR_MSG
 
@@ -105,31 +104,16 @@ class ForgotPasswordSerializer(serializers.Serializer):
         return value
 
 
-class NewPasswordSerializer(serializers.Serializer):
-    new_password = serializers.CharField(write_only=True)
-    confirm_password = serializers.CharField(write_only=True)
-    token = serializers.CharField(write_only=True)
+class ForgotPasswordVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp_code = serializers.CharField(max_length=6)
+    code = serializers.CharField(max_length=50)
 
-    def validate(self, data):
-        if data['new_password'] != data['confirm_password']:
-            raise ValidationError("Parollar mos kelmaydi.")
 
-        try:
-            reset_token = PasswordResetToken.objects.get(token=data['token'])
-        except PasswordResetToken.DoesNotExist:
-            raise ValidationError("Token yaroqsiz.")
+class ResetPasswordSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    password = serializers.CharField(min_length=8, write_only=True)
 
-        if reset_token.is_expired():
-            raise ValidationError("Token muddati tugagan.")
 
-        if reset_token.verified is False:
-            raise ValidationError("Token tasdiqlanmagan.")
-
-        return data
-
-    def save(self):
-        reset_token = PasswordResetToken.objects.get(token=self.validated_data['token'])
-        user = reset_token.user
-        user.set_password(self.validated_data['new_password'])
-        user.save()
-        reset_token.delete()
+class TokenSerializer(serializers.Serializer):
+    token = serializers.CharField()

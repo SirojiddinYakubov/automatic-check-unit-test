@@ -1,16 +1,21 @@
 import datetime
-
+import random
+import string
+import uuid
+from secrets import token_urlsafe
 import redis
 from decouple import config
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.hashers import make_password, check_password
 
 from users.enums import TokenType
 
 REDIS_HOST = config("REDIS_HOST", None)
 REDIS_PORT = config("REDIS_PORT", None)
 REDIS_DB = config("REDIS_DB", None)
+
 User = get_user_model()
 
 
@@ -83,3 +88,48 @@ class UserService:
                 settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
             )
         return {"access": access, "refresh": refresh}
+
+
+class OTPException(Exception):
+    def __init__(self, message, ttl=None):
+        self.message = message
+        self.ttl = ttl
+        super().__init__(self.message)
+
+
+
+class OTPService:
+    @staticmethod
+    def get_redis_conn() -> redis.Redis:
+        return TokenService.get_redis_client()
+
+    @staticmethod
+    def generate_otp(
+        email: str,
+        expire_in: int = 120,
+        check_if_exists: bool = True
+    ) -> tuple[str, str]:
+        redis_conn = OTPService.get_redis_conn()
+        otp_code = "".join(random.choices(string.digits, k=6))
+        secret_token = token_urlsafe()
+        otp_hash = make_password(f"{secret_token}:{otp_code}")
+        key = f"{email}:otp"
+
+        if check_if_exists and redis_conn.exists(key):
+            ttl = redis_conn.ttl(key)
+            raise OTPException(f"Sizda yaroqli OTP kodingiz bor. {ttl} soniyadan keyin qayta urinib koʻring.", ttl)
+
+        redis_conn.set(key, otp_hash, ex=expire_in)
+        return otp_code, secret_token
+
+    @staticmethod
+    def check_otp(email: str, otp_code: str, otp_secret: str) -> None:
+        redis_conn = OTPService.get_redis_conn()
+        stored_hash = redis_conn.get(f"{email}:otp")
+
+        if not stored_hash or not check_password(f"{otp_secret}:{otp_code}", stored_hash.decode()):
+            raise OTPException("Yaroqsiz OTP kodi.")
+
+    @staticmethod
+    def generate_token() -> str:
+        return str(uuid.uuid4())

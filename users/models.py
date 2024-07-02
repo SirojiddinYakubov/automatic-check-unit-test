@@ -1,5 +1,4 @@
 import os
-
 from django.conf import settings
 from django.contrib.postgres.indexes import HashIndex
 from django.core import validators

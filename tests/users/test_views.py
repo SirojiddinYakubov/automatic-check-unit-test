@@ -1,7 +1,6 @@
 import pytest
 import os
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from unittest.mock import MagicMock
@@ -196,7 +195,7 @@ def signup_data(request):
 def test_signup(signup_data, api_client):
     client = api_client()
     status_code, req_json = signup_data()
-    url = reverse('signup')
+    url = '/users/signup/'
     resp = client.post(url, data=req_json, format='json')
     assert resp.status_code == status_code
     if status_code == status.HTTP_201_CREATED:
@@ -218,7 +217,7 @@ def test_signup(signup_data, api_client):
 
         # check access token
         client = api_client(token=resp_json['access'])
-        url = reverse('users-me')
+        url = '/users/me/'
         resp = client.get(url)
         assert resp.status_code == status.HTTP_200_OK
 
@@ -301,7 +300,7 @@ def login_data(request, user_factory):
 )
 def test_login(login_data, api_client):
     status_code, req_json = login_data()
-    url = reverse('login')
+    url = '/users/login/'
     resp = api_client().post(url, data=req_json)
     assert resp.status_code == status_code
     if status_code == status.HTTP_200_OK:
@@ -310,7 +309,7 @@ def test_login(login_data, api_client):
 
         # check access token
         client = api_client(token=resp_json['access'])
-        url = reverse('users-me')
+        url = '/users/me/'
         resp = client.get(url)
         assert resp.status_code == status.HTTP_200_OK
 
@@ -352,7 +351,7 @@ def test_user_me(user_me_data, api_client):
     status_code, access = user_me_data()
 
     client = api_client(token=access)
-    url = reverse('users-me')
+    url = '/users/me/'
     resp = client.get(url)
     assert resp.status_code == status_code
     if status_code == status.HTTP_200_OK:
@@ -463,7 +462,7 @@ def test_user_me_patch(user_update_data, api_client):
     status_code, access, update_data = user_update_data()
 
     client = api_client(token=access)
-    url = reverse('users-me')
+    url = '/users/me/'
 
     if 'avatar' in update_data:
         avatar_data = update_data['avatar']
@@ -601,7 +600,6 @@ def change_password_data(request, user_factory, tokens):
     return data[request.param]
 
 
-
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     'change_password_data',
@@ -623,7 +621,7 @@ def test_change_password(change_password_data, api_client):
     status_code, user, access, data = change_password_data()
 
     client = api_client(token=access)
-    url = reverse('change-password')
+    url = '/users/password/change/'
     resp = client.put(url, data, format='json')
     assert resp.status_code == status_code
 
@@ -632,7 +630,7 @@ def test_change_password(change_password_data, api_client):
         assert user.check_password(data['new_password'])
 
         client = api_client()
-        login_url = reverse('login')
+        login_url = '/users/login/'
         login_data = {
             'username': user.username,
             'password': data['new_password']
@@ -693,17 +691,17 @@ def test_logout(logout_data, mocker, fake_redis, request, tokens):
 
     # users-me get data
     if test_name == 'test_logout[valid_with_stored_tokens]':
-        url = reverse('users-me')
+        url = '/users/me/'
         resp = client.get(url)
         assert resp.status_code == status_code
 
     # logout
-    resp = client.post(reverse('logout'))
+    resp = client.post('/users/logout/')
     assert resp.status_code == status_code
 
     # users-me get data after logout
     if status_code == 200:
-        resp = client.get(reverse('users-me'))
+        resp = client.get('/users/me/')
         assert resp.status_code == 401
 
     if test_name == 'test_logout[valid_with_stored_tokens]':

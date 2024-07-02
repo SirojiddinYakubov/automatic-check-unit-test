@@ -1,6 +1,5 @@
 import pytest
 import fakeredis
-from unittest.mock import patch
 from pytest_factoryboy import register
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -34,12 +33,6 @@ def tokens():
 @pytest.fixture
 def fake_redis():
     return fakeredis.FakeRedis()
-
-
-@pytest.fixture
-def mock_otp_service():
-    with patch('users.services.OTPService') as mock:
-        yield mock
 
 
 # def pytest_itemcollected(item):

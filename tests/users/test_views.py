@@ -1,5 +1,6 @@
 import pytest
 import os
+import uuid
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from django.contrib.auth import get_user_model
@@ -713,9 +714,10 @@ def test_logout(logout_data, mocker, fake_redis, request, tokens):
 
 
 @pytest.mark.django_db
-def test_forgot_password_view(api_client, user_factory, mock_otp_service):
+def test_forgot_password_view(api_client, user_factory, mocker):
     user = user_factory.create()
-    mock_otp_service.generate_otp.return_value = ('123456', 'secret')
+
+    mocker.patch('users.services.OTPService.generate_otp', return_value=('123456', 'secret'))
 
     response = api_client().post('/users/password/forgot/', {'email': user.email}, format='json')
 
@@ -725,7 +727,7 @@ def test_forgot_password_view(api_client, user_factory, mock_otp_service):
 
 
 @pytest.mark.django_db
-def test_forgot_password_view_with_invalid_email(api_client, mock_otp_service):
+def test_forgot_password_view_with_invalid_email(api_client):
     invalid_email = 'nonexistent@example.com'
 
     response = api_client().post('/users/password/forgot/', {'email': invalid_email}, format='json')
@@ -735,35 +737,108 @@ def test_forgot_password_view_with_invalid_email(api_client, mock_otp_service):
 
 
 @pytest.mark.django_db
-def test_forgot_password_verify_view(api_client, user_factory, mock_otp_service, fake_redis):
-    pass
-
-
-@pytest.mark.django_db
-def test_reset_password_view(api_client, user_factory, mock_otp_service, fake_redis, tokens):
-    pass
-
-
-@pytest.mark.django_db
-def test_forgot_password_verify_view_with_invalid_otp(api_client, user_factory, fake_redis):
+def test_forgot_password_verify_view(api_client, user_factory, fake_redis, mocker):
     user = user_factory.create()
-    invalid_otp_code = '654321'
-    otp_secret = 'secret'
-    otp_hash = make_password(f"{otp_secret}:{invalid_otp_code}")
-    fake_redis.set(otp_hash, user.email)
 
-    response = api_client().post(f'/users/password/forgot/verify/{otp_secret}/', {'email': user.email, 'otp_code': invalid_otp_code}, format='json')
+    otp_code = "123456"
+    otp_secret = "secret"
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert 'detail' in response.data
-    assert response.data['detail'] == 'Yaroqsiz OTP kodi.'
+    otp_hash = make_password(f"{otp_secret}:{otp_code}")
+
+    fake_redis_conn = mocker.patch('users.services.OTPService.get_redis_conn')
+    fake_redis_conn.return_value = mocker.Mock()
+    fake_redis_conn.return_value.get.return_value = otp_hash.encode('utf-8')
+
+    data = {
+        'email': user.email,
+        'otp_code': otp_code,
+    }
+    response = api_client().post(f'/users/password/forgot/verify/{otp_secret}/', data, format='json')
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'token' in response.data
+
+    assert fake_redis_conn.return_value.set.called
+    assert fake_redis_conn.return_value.delete.called
+
+    fake_redis_conn.return_value.delete.assert_called_with(f"{user.email}:otp")
+
+    email = fake_redis_conn.return_value.set.call_args[0][1]
+    assert email == user.email
+
 
 
 @pytest.mark.django_db
-def test_reset_password_view_with_invalid_token(api_client):
-    invalid_token = 'invalid_token'
-    response = api_client().patch('/users/password/reset/', {'token': invalid_token, 'password': 'new_password_123'}, format='json')
+def test_forgot_password_verify_view_with_invalid_otp(api_client, user_factory, mocker):
+    user = user_factory.create()
+
+    correct_otp_code = "123456"
+    incorrect_otp_code = "654321"
+    otp_secret = "secret"
+
+    otp_hash = make_password(f"{otp_secret}:{correct_otp_code}")
+
+    fake_redis_conn = mocker.patch('users.services.OTPService.get_redis_conn')
+    fake_redis_conn.return_value = mocker.Mock()
+    fake_redis_conn.return_value.get.return_value = otp_hash.encode('utf-8')
+
+    data = {
+        'email': user.email,
+        'otp_code': incorrect_otp_code,
+    }
+    response = api_client().post(f'/users/password/forgot/verify/{otp_secret}/', data, format='json')
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert 'detail' in response.data
-    assert response.data['detail'] == 'Token yaroqsiz'
+    assert response.data['detail'] == "Yaroqsiz OTP kodi."
+
+    fake_redis_conn.return_value.delete.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_reset_password_view(api_client, user_factory, mocker):
+    user = user_factory.create()
+
+    token = str(uuid.uuid4())
+    new_password = "new_password123"
+    token_hash = make_password(token)
+
+    fake_redis_conn = mocker.patch('users.services.OTPService.get_redis_conn')
+    fake_redis_conn.return_value = mocker.Mock()
+    fake_redis_conn.return_value.get.return_value = user.email.encode('utf-8')
+
+    mocker.patch('django.contrib.auth.hashers.make_password', return_value=token_hash)
+
+    data = {
+        'token': token,
+        'password': new_password,
+    }
+    response = api_client().patch('/users/password/reset/', data, format='json')
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'access' in response.data
+    assert 'refresh' in response.data
+
+    user.refresh_from_db()
+    assert user.check_password(new_password) is True
+
+
+@pytest.mark.django_db
+def test_reset_password_view_with_invalid_token(api_client, mocker):
+    valid_token = str(uuid.uuid4())
+    make_password(valid_token)
+
+    fake_redis_conn = mocker.patch('users.services.OTPService.get_redis_conn')
+    fake_redis_conn.return_value = mocker.Mock()
+    fake_redis_conn.return_value.get.return_value = None
+
+    invalid_token = str(uuid.uuid4())
+    new_password = "new_password123"
+
+    data = {
+        'token': invalid_token,
+        'password': new_password,
+    }
+    response = api_client().patch('/users/password/reset/', data, format='json')
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.data['detail'] == "Token yaroqsiz"

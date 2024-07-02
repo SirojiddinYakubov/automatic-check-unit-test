@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
 
 from users.errors import BIRTH_YEAR_ERROR_MSG
 
@@ -19,6 +20,13 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True}
         }
+
+    def validate_password(self, value):
+        try:
+            validate_password(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(e.messages)
+        return value
 
     def create(self, validated_data):
         user = User(
@@ -89,6 +97,13 @@ class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
 
+    def validate_password(self, value):
+        try:
+            validate_password(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(e.messages)
+        return value
+
     def validate(self, data):
         if data['new_password'] == data['old_password']:
             raise serializers.ValidationError("Yangi va eski parollar bir xil bo'lmasligi kerak")
@@ -121,3 +136,10 @@ class ForgotPasswordVerifyResponseSerializer(serializers.Serializer):
 class ResetPasswordResponseSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
     password = serializers.CharField(required=True, min_length=8, write_only=True)
+
+    def validate_password(self, value):
+        try:
+            validate_password(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(e.messages)
+        return value

@@ -109,10 +109,9 @@ class ForgotPasswordResponseSerializer(serializers.Serializer):
     otp_secret = serializers.CharField(required=True)
 
 
-class ForgotPasswordVerifySerializer(serializers.Serializer):
+class ForgotPasswordVerifyRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     otp_code = serializers.CharField(required=True, max_length=6)
-    otp_secret = serializers.CharField(required=True, max_length=50)
 
 
 class ForgotPasswordVerifyResponseSerializer(serializers.Serializer):

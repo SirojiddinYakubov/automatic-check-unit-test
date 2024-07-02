@@ -99,17 +99,18 @@ class OTPException(Exception):
 
 
 class OTPService:
-    @staticmethod
-    def get_redis_conn() -> redis.Redis:
-        return TokenService.get_redis_client()
+    @classmethod
+    def get_redis_conn(cls) -> redis.Redis:
+        return redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
-    @staticmethod
+    @classmethod
     def generate_otp(
+        cls,
         email: str,
         expire_in: int = 120,
         check_if_exists: bool = True
     ) -> tuple[str, str]:
-        redis_conn = OTPService.get_redis_conn()
+        redis_conn = cls.get_redis_conn()
         otp_code = "".join(random.choices(string.digits, k=6))
         secret_token = token_urlsafe()
         otp_hash = make_password(f"{secret_token}:{otp_code}")
@@ -122,24 +123,14 @@ class OTPService:
         redis_conn.set(key, otp_hash, ex=expire_in)
         return otp_code, secret_token
 
-    @staticmethod
-    def check_otp(email: str, otp_code: str, otp_secret: str) -> None:
-        redis_conn = OTPService.get_redis_conn()
+    @classmethod
+    def check_otp(cls, email: str, otp_code: str, otp_secret: str) -> None:
+        redis_conn = cls.get_redis_conn()
         stored_hash = redis_conn.get(f"{email}:otp")
 
         if not stored_hash or not check_password(f"{otp_secret}:{otp_code}", stored_hash.decode()):
             raise OTPException("Yaroqsiz OTP kodi.")
 
-    @staticmethod
-    def generate_token() -> str:
+    @classmethod
+    def generate_token(cls) -> str:
         return str(uuid.uuid4())
-
-
-def delete_email_to_redis(email):
-    OTPService.get_redis_conn().delete(f"{email}:otp")
-
-def check_otp(email, otp_code, otp_secret):
-    OTPService.check_otp(email, otp_code, otp_secret)
-
-def generate_otp(email, expire_in):
-    return OTPService.generate_otp(email=email, expire_in=expire_in)

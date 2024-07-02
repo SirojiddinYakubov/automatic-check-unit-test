@@ -5,6 +5,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from unittest.mock import MagicMock
 from users.enums import TokenType
+from django.contrib.auth.hashers import make_password
 
 User = get_user_model()
 
@@ -709,3 +710,60 @@ def test_logout(logout_data, mocker, fake_redis, request, tokens):
         refresh_token_key = f"user:{user.id}:{TokenType.REFRESH}"
         assert fake_redis.smembers(access_token_key) == {b'fake_token'}
         assert fake_redis.smembers(refresh_token_key) == {b'fake_token'}
+
+
+@pytest.mark.django_db
+def test_forgot_password_view(api_client, user_factory, mock_otp_service):
+    user = user_factory.create()
+    mock_otp_service.generate_otp.return_value = ('123456', 'secret')
+
+    response = api_client().post('/users/password/forgot/', {'email': user.email}, format='json')
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data['email'] == user.email
+    assert 'otp_secret' in response.data
+
+
+@pytest.mark.django_db
+def test_forgot_password_view_with_invalid_email(api_client, mock_otp_service):
+    invalid_email = 'nonexistent@example.com'
+
+    response = api_client().post('/users/password/forgot/', {'email': invalid_email}, format='json')
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.data['email'][0] == "Email topilmadi."
+
+
+@pytest.mark.django_db
+def test_forgot_password_verify_view(api_client, user_factory, mock_otp_service, fake_redis):
+    pass
+
+
+@pytest.mark.django_db
+def test_reset_password_view(api_client, user_factory, mock_otp_service, fake_redis, tokens):
+    pass
+
+
+@pytest.mark.django_db
+def test_forgot_password_verify_view_with_invalid_otp(api_client, user_factory, fake_redis):
+    user = user_factory.create()
+    invalid_otp_code = '654321'
+    otp_secret = 'secret'
+    otp_hash = make_password(f"{otp_secret}:{invalid_otp_code}")
+    fake_redis.set(otp_hash, user.email)
+
+    response = api_client().post(f'/users/password/forgot/verify/{otp_secret}/', {'email': user.email, 'otp_code': invalid_otp_code}, format='json')
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'detail' in response.data
+    assert response.data['detail'] == 'Yaroqsiz OTP kodi.'
+
+
+@pytest.mark.django_db
+def test_reset_password_view_with_invalid_token(api_client):
+    invalid_token = 'invalid_token'
+    response = api_client().patch('/users/password/reset/', {'token': invalid_token, 'password': 'new_password_123'}, format='json')
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'detail' in response.data
+    assert response.data['detail'] == 'Token yaroqsiz'

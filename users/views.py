@@ -251,7 +251,8 @@ class ForgotPasswordView(generics.CreateAPIView):
                 "otp_secret": otp_secret,
             })
         else:
-            OTPService.get_redis_conn().delete(email=email)
+            redis_conn = OTPService.get_redis_conn()
+            redis_conn.delete(email=email)
             return Response({"detail": "Email yuborishda nimadir noto'g'ri"}, status=res_code)
 
 

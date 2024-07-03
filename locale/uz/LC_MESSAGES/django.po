@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-03 12:22+0500\n"
+"POT-Creation-Date: 2024-07-03 17:43+0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,15 +18,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: core/settings.py:117
+#: core/settings.py:118
 msgid "English"
 msgstr "English"
 
-#: core/settings.py:118
+#: core/settings.py:119
 msgid "Uzbek"
 msgstr "Uzbek"
 
-#: core/settings.py:119
+#: core/settings.py:120
 msgid "Russian"
 msgstr "Russian"
 
@@ -41,33 +41,31 @@ msgstr "Kirish ma'lumotlari yaroqsiz"
 #: users/errors.py:4
 #, python-brace-format
 msgid ""
-"Tug'ilgan yili {settings.BIRTH_YEAR_MIN} dan katta va "
-"{settings.BIRTH_YEAR_MAX} dan kichik bo'lishi kerak."
+"Tug'ilgan yili {min_year} dan katta va {max_year} dan kichik bo'lishi kerak."
 msgstr ""
-"Tug'ilgan yili {settings.BIRTH_YEAR_MIN} dan katta va "
-"{settings.BIRTH_YEAR_MAX} dan kichik bo'lishi kerak."
+"Tug'ilgan yili {min_year} dan katta va {max_year} dan kichik bo'lishi kerak."
 
 #: users/models.py:44
 msgid "User"
-msgstr "Foydalanuvchi"
+msgstr "User"
 
 #: users/models.py:45
 msgid "Users"
-msgstr "Foydalanuvchilar"
+msgstr "Users"
 
-#: users/serializers.py:66
+#: users/serializers.py:73
 msgid "Kirish maʼlumotlari notoʻgʻri"
 msgstr "Kirish maʼlumotlari notoʻgʻri"
 
-#: users/serializers.py:68
+#: users/serializers.py:75
 msgid "Foydalanuvchi nomi va parol ham talab qilinadi"
 msgstr "Foydalanuvchi nomi va parol ham talab qilinadi"
 
-#: users/serializers.py:95
+#: users/serializers.py:109
 msgid "Yangi va eski parollar bir xil bo'lmasligi kerak"
 msgstr "Yangi va eski parollar bir xil bo'lmasligi kerak"
 
-#: users/serializers.py:104
+#: users/serializers.py:118
 msgid "Email topilmadi."
 msgstr "Email topilmadi."
 
@@ -82,37 +80,13 @@ msgstr ""
 msgid "Yaroqsiz OTP kodi."
 msgstr "Yaroqsiz OTP kodi."
 
-#: users/views.py:37
-msgid "Sign up a new user"
-msgstr "Sign up a new user"
-
-#: users/views.py:65
-msgid "Log in a user"
-msgstr "Log in a user"
-
 #: users/views.py:91
 msgid "Hisob maʼlumotlari yaroqsiz"
 msgstr "Hisob maʼlumotlari yaroqsiz"
 
-#: users/views.py:96
-msgid "Get user information"
-msgstr "Get user information"
-
-#: users/views.py:103
-msgid "Update user information"
-msgstr "Update user information"
-
-#: users/views.py:136
-msgid "Log out a user"
-msgstr "Log out a user"
-
 #: users/views.py:161
 msgid "Mufaqqiyatli chiqildi."
 msgstr "Mufaqqiyatli chiqildi."
-
-#: users/views.py:166
-msgid "Change user password"
-msgstr "Change user password"
 
 #: users/views.py:215
 msgid "Eski parol xato."
@@ -127,14 +101,6 @@ msgstr ""
 #: users/views.py:256
 msgid "Email yuborishda nimadir noto'g'ri"
 msgstr "Email yuborishda nimadir noto'g'ri"
-
-#: users/views.py:261
-msgid "Forgot Password Verify"
-msgstr "Forgot Password Verify"
-
-#: users/views.py:299
-msgid "Reset Password"
-msgstr "Reset Password"
 
 #: users/views.py:322
 msgid "Token yaroqsiz"

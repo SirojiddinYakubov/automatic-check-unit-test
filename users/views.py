@@ -34,7 +34,7 @@ User = get_user_model()
 
 @extend_schema_view(
     post=extend_schema(
-        summary=_("Sign up a new user"),
+        summary="Sign up a new user",
         request=UserSerializer,
         responses={
             201: UserSerializer,
@@ -62,7 +62,7 @@ class SignupView(APIView):
 
 @extend_schema_view(
     post=extend_schema(
-        summary=_("Log in a user"),
+        summary="Log in a user",
         request=LoginSerializer,
         responses={
             200: TokenResponseSerializer,
@@ -93,14 +93,14 @@ class LoginView(APIView):
 
 @extend_schema_view(
     get=extend_schema(
-        summary=_("Get user information"),
+        summary="Get user information",
         responses={
             200: UserSerializer,
             400: ValidationErrorSerializer
         }
     ),
     patch=extend_schema(
-        summary=_("Update user information"),
+        summary="Update user information",
         request=UserUpdateSerializer,
         responses={
             200: UserUpdateSerializer,
@@ -133,7 +133,7 @@ class UsersMe(generics.RetrieveAPIView, generics.UpdateAPIView):
 
 @extend_schema_view(
     post=extend_schema(
-        summary=_("Log out a user"),
+        summary="Log out a user",
         request=None,
         responses={
             200: ValidationErrorSerializer,
@@ -163,7 +163,7 @@ class LogoutView(generics.GenericAPIView):
 
 @extend_schema_view(
     put=extend_schema(
-        summary=_("Change user password"),
+        summary="Change user password",
         request=ChangePasswordSerializer,
         responses={
             200: TokenResponseSerializer,
@@ -242,7 +242,7 @@ class ForgotPasswordView(generics.CreateAPIView):
         try:
             otp_code, otp_secret = OTPService.generate_otp(email=email, expire_in=2 * 60)
         except OTPException as e:
-            return Response({"detail": _(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
         res_code = SendEmailService.send_email(email, otp_code)
         if res_code == 200:
@@ -258,7 +258,7 @@ class ForgotPasswordView(generics.CreateAPIView):
 
 @extend_schema_view(
     post=extend_schema(
-        summary=_("Forgot Password Verify"),
+        summary="Forgot Password Verify",
         request=ForgotPasswordVerifyRequestSerializer,
         responses={
             200: ForgotPasswordVerifyResponseSerializer,
@@ -285,7 +285,7 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
         try:
             OTPService.check_otp(email, otp_code, otp_secret)
         except OTPException as e:
-            return Response({"detail": _(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
         redis_conn.delete(f"{email}:otp")
         token_hash = make_password(token_urlsafe())
@@ -296,7 +296,7 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
 
 @extend_schema_view(
     patch=extend_schema(
-        summary=_("Reset Password"),
+        summary="Reset Password",
         request=ResetPasswordResponseSerializer,
         responses={
             200: TokenResponseSerializer,

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-03 12:22+0500\n"
+"POT-Creation-Date: 2024-07-03 17:43+0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,15 +18,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: core/settings.py:117
+#: core/settings.py:118
 msgid "English"
 msgstr "English"
 
-#: core/settings.py:118
+#: core/settings.py:119
 msgid "Uzbek"
 msgstr "Uzbek"
 
-#: core/settings.py:119
+#: core/settings.py:120
 msgid "Russian"
 msgstr "Russian"
 
@@ -41,11 +41,8 @@ msgstr "Invalid login information"
 #: users/errors.py:4
 #, python-brace-format
 msgid ""
-"Tug'ilgan yili {settings.BIRTH_YEAR_MIN} dan katta va "
-"{settings.BIRTH_YEAR_MAX} dan kichik bo'lishi kerak."
-msgstr ""
-"Birth year must be greater than {settings.BIRTH_YEAR_MIN} and less than "
-"{settings.BIRTH_YEAR_MAX}."
+"Tug'ilgan yili {min_year} dan katta va {max_year} dan kichik bo'lishi kerak."
+msgstr "Birth year must be greater than {min_year} and less than {max_year}."
 
 #: users/models.py:44
 msgid "User"
@@ -55,19 +52,19 @@ msgstr "User"
 msgid "Users"
 msgstr "Users"
 
-#: users/serializers.py:66
+#: users/serializers.py:73
 msgid "Kirish maʼlumotlari notoʻgʻri"
 msgstr "Invalid login information"
 
-#: users/serializers.py:68
+#: users/serializers.py:75
 msgid "Foydalanuvchi nomi va parol ham talab qilinadi"
 msgstr "A username and password are also required"
 
-#: users/serializers.py:95
+#: users/serializers.py:109
 msgid "Yangi va eski parollar bir xil bo'lmasligi kerak"
 msgstr "New and old passwords should not be the same"
 
-#: users/serializers.py:104
+#: users/serializers.py:118
 msgid "Email topilmadi."
 msgstr "Email not found."
 
@@ -81,37 +78,13 @@ msgstr "You have a valid OTP code. Please try again in {ttl} seconds."
 msgid "Yaroqsiz OTP kodi."
 msgstr "Invalid OTP code."
 
-#: users/views.py:37
-msgid "Sign up a new user"
-msgstr "Sign up a new user"
-
-#: users/views.py:65
-msgid "Log in a user"
-msgstr "Log in a user"
-
 #: users/views.py:91
 msgid "Hisob maʼlumotlari yaroqsiz"
 msgstr "Credentials are invalid"
 
-#: users/views.py:96
-msgid "Get user information"
-msgstr "Get user information"
-
-#: users/views.py:103
-msgid "Update user information"
-msgstr "Update user information"
-
-#: users/views.py:136
-msgid "Log out a user"
-msgstr "Log out a user"
-
 #: users/views.py:161
 msgid "Mufaqqiyatli chiqildi."
 msgstr "Released successfully."
-
-#: users/views.py:166
-msgid "Change user password"
-msgstr "Change user password"
 
 #: users/views.py:215
 msgid "Eski parol xato."
@@ -125,14 +98,6 @@ msgstr "No verified user found with this email address!"
 #: users/views.py:256
 msgid "Email yuborishda nimadir noto'g'ri"
 msgstr "Something went wrong while sending the email"
-
-#: users/views.py:261
-msgid "Forgot Password Verify"
-msgstr "Forgot Password Verify"
-
-#: users/views.py:299
-msgid "Reset Password"
-msgstr "Reset Password"
 
 #: users/views.py:322
 msgid "Token yaroqsiz"

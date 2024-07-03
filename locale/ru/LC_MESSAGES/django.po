@@ -1,0 +1,141 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-07-03 12:22+0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n%100>=11 && n%100<=14)? 2 : 3);\n"
+
+#: core/settings.py:117
+msgid "English"
+msgstr "Английский"
+
+#: core/settings.py:118
+msgid "Uzbek"
+msgstr "Узбекский"
+
+#: core/settings.py:119
+msgid "Russian"
+msgstr "Русский"
+
+#: users/authentications.py:26
+msgid "Access tokeni yaroqsiz"
+msgstr "Токен доступа недействителен."
+
+#: users/authentications.py:37
+msgid "Kirish ma'lumotlari yaroqsiz"
+msgstr "Неверная информация для входа"
+
+#: users/errors.py:4
+#, python-brace-format
+msgid ""
+"Tug'ilgan yili {settings.BIRTH_YEAR_MIN} dan katta va "
+"{settings.BIRTH_YEAR_MAX} dan kichik bo'lishi kerak."
+msgstr ""
+"Год рождения должен быть больше {settings.BIRTH_YEAR_MIN} и меньше "
+"{settings.BIRTH_YEAR_MAX}."
+
+#: users/models.py:44
+msgid "User"
+msgstr "Пользователь"
+
+#: users/models.py:45
+msgid "Users"
+msgstr "Пользователи"
+
+#: users/serializers.py:66
+msgid "Kirish maʼlumotlari notoʻgʻri"
+msgstr "Неверная информация для входа"
+
+#: users/serializers.py:68
+msgid "Foydalanuvchi nomi va parol ham talab qilinadi"
+msgstr "Также требуются имя пользователя и пароль"
+
+#: users/serializers.py:95
+msgid "Yangi va eski parollar bir xil bo'lmasligi kerak"
+msgstr "Новый и старый пароли не должны совпадать"
+
+#: users/serializers.py:104
+msgid "Email topilmadi."
+msgstr "Электронная почта не найдена."
+
+#: users/services.py:121
+#, python-brace-format
+msgid ""
+"Sizda yaroqli OTP kodingiz bor. {ttl} soniyadan keyin qayta urinib koʻring."
+msgstr ""
+"У вас есть действительный OTP-код. Повторите попытку через {ttl} секунд."
+
+#: users/services.py:132
+msgid "Yaroqsiz OTP kodi."
+msgstr "Неверный OTP-код."
+
+#: users/views.py:37
+msgid "Sign up a new user"
+msgstr "Зарегистрируйте нового пользователя"
+
+#: users/views.py:65
+msgid "Log in a user"
+msgstr "Войти пользователем"
+
+#: users/views.py:91
+msgid "Hisob maʼlumotlari yaroqsiz"
+msgstr "Учетные данные недействительны"
+
+#: users/views.py:96
+msgid "Get user information"
+msgstr "Получить информацию о пользователе"
+
+#: users/views.py:103
+msgid "Update user information"
+msgstr "Обновить информацию о пользователе"
+
+#: users/views.py:136
+msgid "Log out a user"
+msgstr "Выйти из пользователя"
+
+#: users/views.py:161
+msgid "Mufaqqiyatli chiqildi."
+msgstr "Выпущен успешно."
+
+#: users/views.py:166
+msgid "Change user password"
+msgstr "Изменить пароль пользователя"
+
+#: users/views.py:215
+msgid "Eski parol xato."
+msgstr "Старый пароль неправильный."
+
+#: users/views.py:240 users/views.py:283 users/views.py:328
+msgid ""
+"Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"
+msgstr ""
+"Ни один проверенный пользователь с этим адресом электронной почты не найден!"
+
+#: users/views.py:256
+msgid "Email yuborishda nimadir noto'g'ri"
+msgstr "Что-то пошло не так при отправке письма"
+
+#: users/views.py:261
+msgid "Forgot Password Verify"
+msgstr "Забыли пароль Подтвердите"
+
+#: users/views.py:299
+msgid "Reset Password"
+msgstr "Сброс пароля"
+
+#: users/views.py:322
+msgid "Token yaroqsiz"
+msgstr "Токен недействителен"

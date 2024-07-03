@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, update_session_auth_hash
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from .utils import SendEmailService
-
+from django.utils.translation import gettext_lazy as _
 from .enums import TokenType
 from .serializers import (
     UserSerializer,
@@ -34,7 +34,7 @@ User = get_user_model()
 
 @extend_schema_view(
     post=extend_schema(
-        summary="Sign up a new user",
+        summary=_("Sign up a new user"),
         request=UserSerializer,
         responses={
             201: UserSerializer,
@@ -62,7 +62,7 @@ class SignupView(APIView):
 
 @extend_schema_view(
     post=extend_schema(
-        summary="Log in a user",
+        summary=_("Log in a user"),
         request=LoginSerializer,
         responses={
             200: TokenResponseSerializer,
@@ -88,19 +88,19 @@ class LoginView(APIView):
             tokens = UserService.create_tokens(user)
             return Response(tokens, status=status.HTTP_200_OK)
         else:
-            return Response({'detail': 'Hisob maʼlumotlari yaroqsiz'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'detail': _('Hisob maʼlumotlari yaroqsiz')}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @extend_schema_view(
     get=extend_schema(
-        summary="Get user information",
+        summary=_("Get user information"),
         responses={
             200: UserSerializer,
             400: ValidationErrorSerializer
         }
     ),
     patch=extend_schema(
-        summary="Update user information",
+        summary=_("Update user information"),
         request=UserUpdateSerializer,
         responses={
             200: UserUpdateSerializer,
@@ -133,7 +133,7 @@ class UsersMe(generics.RetrieveAPIView, generics.UpdateAPIView):
 
 @extend_schema_view(
     post=extend_schema(
-        summary="Log out a user",
+        summary=_("Log out a user"),
         request=None,
         responses={
             200: ValidationErrorSerializer,
@@ -158,12 +158,12 @@ class LogoutView(generics.GenericAPIView):
             TokenType.REFRESH,
             settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
         )
-        return Response({"detail": "Mufaqqiyatli chiqildi."}, status=status.HTTP_200_OK)
+        return Response({"detail": _("Mufaqqiyatli chiqildi.")}, status=status.HTTP_200_OK)
 
 
 @extend_schema_view(
     put=extend_schema(
-        summary="Change user password",
+        summary=_("Change user password"),
         request=ChangePasswordSerializer,
         responses={
             200: TokenResponseSerializer,
@@ -212,7 +212,7 @@ class ChangePasswordView(APIView):
             }, status=status.HTTP_200_OK)
         else:
             return Response({
-                "detail": "Eski parol xato."
+                "detail": _("Eski parol xato.")
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -237,12 +237,12 @@ class ForgotPasswordView(generics.CreateAPIView):
         email = serializer.validated_data['email']
         users = User.objects.filter(email=email, is_active=True)
         if not users.exists():
-            raise Exception(404, "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")
+            raise Exception(404, _("Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"))
 
         try:
             otp_code, otp_secret = OTPService.generate_otp(email=email, expire_in=2 * 60)
         except OTPException as e:
-            return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": _(e.message)}, status=status.HTTP_400_BAD_REQUEST)
 
         res_code = SendEmailService.send_email(email, otp_code)
         if res_code == 200:
@@ -253,12 +253,12 @@ class ForgotPasswordView(generics.CreateAPIView):
         else:
             redis_conn = OTPService.get_redis_conn()
             redis_conn.delete(email=email)
-            return Response({"detail": "Email yuborishda nimadir noto'g'ri"}, status=res_code)
+            return Response({"detail": _("Email yuborishda nimadir noto'g'ri")}, status=res_code)
 
 
 @extend_schema_view(
     post=extend_schema(
-        summary="Forgot Password Verify",
+        summary=_("Forgot Password Verify"),
         request=ForgotPasswordVerifyRequestSerializer,
         responses={
             200: ForgotPasswordVerifyResponseSerializer,
@@ -280,12 +280,12 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
         email = serializer.validated_data['email']
         users = User.objects.filter(email=email, is_active=True)
         if not users.exists():
-            return Response({"detail": "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             OTPService.check_otp(email, otp_code, otp_secret)
         except OTPException as e:
-            return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": _(e.message)}, status=status.HTTP_400_BAD_REQUEST)
 
         redis_conn.delete(f"{email}:otp")
         token_hash = make_password(token_urlsafe())
@@ -296,7 +296,7 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
 
 @extend_schema_view(
     patch=extend_schema(
-        summary="Reset Password",
+        summary=_("Reset Password"),
         request=ResetPasswordResponseSerializer,
         responses={
             200: TokenResponseSerializer,
@@ -319,13 +319,13 @@ class ResetPasswordView(generics.UpdateAPIView):
         email = redis_conn.get(token_hash)
 
         if not email:
-            return Response({"detail": "Token yaroqsiz"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": _("Token yaroqsiz")}, status=status.HTTP_400_BAD_REQUEST)
 
         email = email.decode()
         users = User.objects.filter(email=email, is_active=True)
 
         if not users.exists():
-            return Response({"detail": "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")}, status=status.HTTP_404_NOT_FOUND)
 
         password = serializer.validated_data['password']
         user = users.first()

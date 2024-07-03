@@ -1,0 +1,141 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-07-03 12:22+0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: core/settings.py:117
+msgid "English"
+msgstr "English"
+
+#: core/settings.py:118
+msgid "Uzbek"
+msgstr "Uzbek"
+
+#: core/settings.py:119
+msgid "Russian"
+msgstr "Russian"
+
+#: users/authentications.py:26
+msgid "Access tokeni yaroqsiz"
+msgstr "Access tokeni yaroqsiz"
+
+#: users/authentications.py:37
+msgid "Kirish ma'lumotlari yaroqsiz"
+msgstr "Kirish ma'lumotlari yaroqsiz"
+
+#: users/errors.py:4
+#, python-brace-format
+msgid ""
+"Tug'ilgan yili {settings.BIRTH_YEAR_MIN} dan katta va "
+"{settings.BIRTH_YEAR_MAX} dan kichik bo'lishi kerak."
+msgstr ""
+"Tug'ilgan yili {settings.BIRTH_YEAR_MIN} dan katta va "
+"{settings.BIRTH_YEAR_MAX} dan kichik bo'lishi kerak."
+
+#: users/models.py:44
+msgid "User"
+msgstr "Foydalanuvchi"
+
+#: users/models.py:45
+msgid "Users"
+msgstr "Foydalanuvchilar"
+
+#: users/serializers.py:66
+msgid "Kirish maʼlumotlari notoʻgʻri"
+msgstr "Kirish maʼlumotlari notoʻgʻri"
+
+#: users/serializers.py:68
+msgid "Foydalanuvchi nomi va parol ham talab qilinadi"
+msgstr "Foydalanuvchi nomi va parol ham talab qilinadi"
+
+#: users/serializers.py:95
+msgid "Yangi va eski parollar bir xil bo'lmasligi kerak"
+msgstr "Yangi va eski parollar bir xil bo'lmasligi kerak"
+
+#: users/serializers.py:104
+msgid "Email topilmadi."
+msgstr "Email topilmadi."
+
+#: users/services.py:121
+#, python-brace-format
+msgid ""
+"Sizda yaroqli OTP kodingiz bor. {ttl} soniyadan keyin qayta urinib koʻring."
+msgstr ""
+"Sizda yaroqli OTP kodingiz bor. {ttl} soniyadan keyin qayta urinib koʻring."
+
+#: users/services.py:132
+msgid "Yaroqsiz OTP kodi."
+msgstr "Yaroqsiz OTP kodi."
+
+#: users/views.py:37
+msgid "Sign up a new user"
+msgstr "Sign up a new user"
+
+#: users/views.py:65
+msgid "Log in a user"
+msgstr "Log in a user"
+
+#: users/views.py:91
+msgid "Hisob maʼlumotlari yaroqsiz"
+msgstr "Hisob maʼlumotlari yaroqsiz"
+
+#: users/views.py:96
+msgid "Get user information"
+msgstr "Get user information"
+
+#: users/views.py:103
+msgid "Update user information"
+msgstr "Update user information"
+
+#: users/views.py:136
+msgid "Log out a user"
+msgstr "Log out a user"
+
+#: users/views.py:161
+msgid "Mufaqqiyatli chiqildi."
+msgstr "Mufaqqiyatli chiqildi."
+
+#: users/views.py:166
+msgid "Change user password"
+msgstr "Change user password"
+
+#: users/views.py:215
+msgid "Eski parol xato."
+msgstr "Eski parol xato."
+
+#: users/views.py:240 users/views.py:283 users/views.py:328
+msgid ""
+"Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"
+msgstr ""
+"Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"
+
+#: users/views.py:256
+msgid "Email yuborishda nimadir noto'g'ri"
+msgstr "Email yuborishda nimadir noto'g'ri"
+
+#: users/views.py:261
+msgid "Forgot Password Verify"
+msgstr "Forgot Password Verify"
+
+#: users/views.py:299
+msgid "Reset Password"
+msgstr "Reset Password"
+
+#: users/views.py:322
+msgid "Token yaroqsiz"
+msgstr "Token yaroqsiz"

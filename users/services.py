@@ -118,7 +118,7 @@ class OTPService:
 
         if check_if_exists and redis_conn.exists(key):
             ttl = redis_conn.ttl(key)
-            raise OTPException(_(f"Sizda yaroqli OTP kodingiz bor. {ttl} soniyadan keyin qayta urinib koʻring."), ttl)
+            raise OTPException(_("Sizda yaroqli OTP kodingiz bor. {} soniyadan keyin qayta urinib koʻring.").format(ttl), ttl)
 
         redis_conn.set(key, otp_hash, ex=expire_in)
         return otp_code, secret_token

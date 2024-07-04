@@ -4,7 +4,7 @@ from .models import CustomUser
 
 @register(CustomUser)
 class CustomUserTranslationOptions(TranslationOptions):
-    fields = ('username', 'first_name', 'last_name', 'middle_name', 'email',)
+    fields = ('first_name', 'last_name', 'middle_name',)
 
 
 # translator.register(CustomUser, CustomUserTranslationOptions)

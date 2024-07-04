@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django_resized import ResizedImageField
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
+from django.utils.translation import gettext_lazy as _
 from users.errors import BIRTH_YEAR_ERROR_MSG
 
 
@@ -41,8 +41,8 @@ class CustomUser(AbstractUser):
 
     class Meta:
         db_table = "user"  # maʼlumotlar bazasi jadvali nomi
-        verbose_name = "User"
-        verbose_name_plural = "Users"
+        verbose_name = _("User")
+        verbose_name_plural = _("Users")
         ordering = ["-date_joined"]  # qoʻshilgan sana boʻyicha kamayib borayotgan tartib
         indexes = [
             HashIndex(fields=['first_name'], name='%(class)s_first_name_hash_idx'),

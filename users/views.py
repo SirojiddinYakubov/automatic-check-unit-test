@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, update_session_auth_hash
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from .utils import SendEmailService
-
+from django.utils.translation import gettext_lazy as _
 from .enums import TokenType
 from .serializers import (
     UserSerializer,
@@ -88,7 +88,7 @@ class LoginView(APIView):
             tokens = UserService.create_tokens(user)
             return Response(tokens, status=status.HTTP_200_OK)
         else:
-            return Response({'detail': 'Hisob maʼlumotlari yaroqsiz'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'detail': _('Hisob maʼlumotlari yaroqsiz')}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @extend_schema_view(
@@ -158,7 +158,7 @@ class LogoutView(generics.GenericAPIView):
             TokenType.REFRESH,
             settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
         )
-        return Response({"detail": "Mufaqqiyatli chiqildi."}, status=status.HTTP_200_OK)
+        return Response({"detail": _("Mufaqqiyatli chiqildi.")}, status=status.HTTP_200_OK)
 
 
 @extend_schema_view(
@@ -212,7 +212,7 @@ class ChangePasswordView(APIView):
             }, status=status.HTTP_200_OK)
         else:
             return Response({
-                "detail": "Eski parol xato."
+                "detail": _("Eski parol xato.")
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -237,7 +237,7 @@ class ForgotPasswordView(generics.CreateAPIView):
         email = serializer.validated_data['email']
         users = User.objects.filter(email=email, is_active=True)
         if not users.exists():
-            raise Exception(404, "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")
+            raise Exception(404, _("Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"))
 
         try:
             otp_code, otp_secret = OTPService.generate_otp(email=email, expire_in=2 * 60)
@@ -251,8 +251,9 @@ class ForgotPasswordView(generics.CreateAPIView):
                 "otp_secret": otp_secret,
             })
         else:
-            OTPService.get_redis_conn().delete(email=email)
-            return Response({"detail": "Email yuborishda nimadir noto'g'ri"}, status=res_code)
+            redis_conn = OTPService.get_redis_conn()
+            redis_conn.delete(email=email)
+            return Response({"detail": _("Email yuborishda nimadir noto'g'ri")}, status=res_code)
 
 
 @extend_schema_view(
@@ -279,7 +280,7 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
         email = serializer.validated_data['email']
         users = User.objects.filter(email=email, is_active=True)
         if not users.exists():
-            return Response({"detail": "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             OTPService.check_otp(email, otp_code, otp_secret)
@@ -318,13 +319,13 @@ class ResetPasswordView(generics.UpdateAPIView):
         email = redis_conn.get(token_hash)
 
         if not email:
-            return Response({"detail": "Token yaroqsiz"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": _("Token yaroqsiz")}, status=status.HTTP_400_BAD_REQUEST)
 
         email = email.decode()
         users = User.objects.filter(email=email, is_active=True)
 
         if not users.exists():
-            return Response({"detail": "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")}, status=status.HTTP_404_NOT_FOUND)
 
         password = serializer.validated_data['password']
         user = users.first()

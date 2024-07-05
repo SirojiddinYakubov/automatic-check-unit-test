@@ -47,3 +47,8 @@ def test_swagger_schema(api_client):
     response = api_client().get(schema_path)
     assert response.status_code == status.HTTP_200_OK, f"Failed to fetch Schema, received status code {response.status_code}"
     assert 'application/vnd.oai.openapi' in response['Content-Type'], f"Expected vnd.oai.openapi content, received {response['Content-Type']}"
+
+
+@pytest.mark.django_db
+def test_installed_apps():
+    assert 'django_loguru' in settings.INSTALLED_APPS, "django_loguru is not installed"

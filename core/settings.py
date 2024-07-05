@@ -4,6 +4,8 @@ from datetime import timedelta, datetime
 from django.utils.translation import gettext_lazy as _
 import certifi
 import os
+from loguru import logger
+import sys
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
@@ -12,6 +14,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='hjg^&%**%%^*GHVGJHGKJGKH')
 
 DEBUG = config('DEBUG', default=False, cast=bool)
+
+logger.info(f"DEBUG: {DEBUG}")
 
 ALLOWED_HOSTS = ['*']
 
@@ -32,6 +36,7 @@ EXTERNAL_APPS = [
     'drf_spectacular',
     'django_redis',
     'modeltranslation',
+    'django_loguru',
 ]
 
 LOCAL_APPS = [
@@ -45,13 +50,14 @@ INSTALLED_APPS = DJANGO_APPS + EXTERNAL_APPS + LOCAL_APPS
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'core.middlewares.CustomLocaleMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middlewares.CustomLocaleMiddleware',
+    'core.middlewares.LogRequestMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -228,6 +234,8 @@ REDIS_DB = config('REDIS_DB', default='1')
 
 REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
 
+logger.info(f"Using redis | URL: {REDIS_URL}")
+
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -252,3 +260,37 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='your_email@gmail.com')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your_password')
+
+
+# LOGURU settings
+
+LOGGING_CONFIG = None
+
+LOGGING = {
+    "formats": {
+        "default": "<green>ts={time:YYYY-MM-DD HH:mm:ss.SSS}</green> |"
+        " <level>level={level:<8}</level> |"
+        " <cyan>file={file}</cyan> <cyan>module={module}</cyan> <cyan>func={function}</cyan> <cyan>line={line}</cyan>"
+        " - <level>{message}</level>",
+    },
+    "sinks": {
+        "console": {
+            "output": sys.stderr,
+            "format": "default",
+            "level": "DEBUG",
+        },
+        "file": {
+            "output": "/tmp/log.log",
+            "format": "default",
+            "level": "DEBUG",
+            "rotation": "1 day",
+        },
+    },
+    "loggers": {
+        "dj_loguru": {
+            "sinks": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+    },
+}

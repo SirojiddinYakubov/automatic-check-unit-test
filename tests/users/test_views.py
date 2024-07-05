@@ -993,17 +993,3 @@ def test_modeltranslation_is_setup_correctly(user_factory):
         assert instance.first_name == "O'zbekcha ism"
     with translation.override('ru'):
         assert instance.first_name == "Русское имя"
-
-
-@pytest.mark.django_db
-def test_model_translation_field_retrieval(user_factory):
-    instance = user_factory.create(first_name_en="English name", first_name_uz="O'zbekcha ism", first_name_ru="Русское имя")
-
-    instance.refresh_from_db()
-
-    with translation.override('en'):
-        assert instance.first_name == "English name"
-    with translation.override('uz'):
-        assert instance.first_name == "O'zbekcha ism"
-    with translation.override('ru'):
-        assert instance.first_name == "Русское имя"

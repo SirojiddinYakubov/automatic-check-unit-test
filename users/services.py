@@ -11,6 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils.translation import gettext_lazy as _
 from users.enums import TokenType
+from loguru import logger
 
 REDIS_HOST = config("REDIS_HOST", None)
 REDIS_PORT = config("REDIS_PORT", None)
@@ -114,6 +115,7 @@ class OTPService:
         otp_code = "".join(random.choices(string.digits, k=6))
         secret_token = token_urlsafe()
         otp_hash = make_password(f"{secret_token}:{otp_code}")
+        logger.debug(f"generate_otp called: otp_code={otp_code}; secret_token={secret_token}, otp_hash={otp_hash}")
         key = f"{email}:otp"
 
         if check_if_exists and redis_conn.exists(key):
@@ -127,6 +129,7 @@ class OTPService:
     def check_otp(cls, email: str, otp_code: str, otp_secret: str) -> None:
         redis_conn = cls.get_redis_conn()
         stored_hash = redis_conn.get(f"{email}:otp")
+        logger.debug(f"check_otp called: email={email}; otp_code={otp_code}; otp_secret={otp_secret}")
 
         if not stored_hash or not check_password(f"{otp_secret}:{otp_code}", stored_hash.decode()):
             raise OTPException(_("Yaroqsiz OTP kodi."))

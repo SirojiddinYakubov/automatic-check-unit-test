@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 import certifi
 import os
 from loguru import logger
-import sys
+from .custom_logging import InterceptHandler
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
@@ -15,7 +15,7 @@ SECRET_KEY = config('SECRET_KEY', default='hjg^&%**%%^*GHVGJHGKJGKH')
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-logger.info(f"DEBUG: {DEBUG}")
+logger.debug(f"DEBUG: {DEBUG}")
 
 ALLOWED_HOSTS = ['*']
 
@@ -36,7 +36,6 @@ EXTERNAL_APPS = [
     'drf_spectacular',
     'django_redis',
     'modeltranslation',
-    'django_loguru',
 ]
 
 LOCAL_APPS = [
@@ -264,33 +263,25 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your_password')
 
 # LOGURU settings
 
-LOGGING_CONFIG = None
-
 LOGGING = {
-    "formats": {
-        "default": "<green>ts={time:YYYY-MM-DD HH:mm:ss.SSS}</green> |"
-        " <level>level={level:<8}</level> |"
-        " <cyan>file={file}</cyan> <cyan>module={module}</cyan> <cyan>func={function}</cyan> <cyan>line={line}</cyan>"
-        " - <level>{message}</level>",
-    },
-    "sinks": {
-        "console": {
-            "output": sys.stderr,
-            "format": "default",
-            "level": "DEBUG",
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'intercept': {
+            '()': InterceptHandler,
+            'level': 0,
         },
-        "file": {
-            "output": "/tmp/log.log",
-            "format": "default",
-            "level": "DEBUG",
-            "rotation": "1 day",
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'django.log',
         },
     },
-    "loggers": {
-        "dj_loguru": {
-            "sinks": ["console", "file"],
-            "level": "DEBUG",
-            "propagate": True,
+    'loggers': {
+        '': {
+            'handlers': ['intercept', 'file'],
+            'level': "DEBUG",
+            'propagate': True,
         },
-    },
+    }
 }

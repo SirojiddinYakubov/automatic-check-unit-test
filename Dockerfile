@@ -3,14 +3,18 @@ FROM python:3.11-slim-bullseye
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
+RUN apt clean && apt update && apt install curl netcat vim gettext -y
+
 WORKDIR /my_code
 COPY . /my_code/
 
-EXPOSE 8000
-
 RUN pip install -r requirements.txt
 
-# RUN python manage.py collectstatic --noinput
+RUN #cp .env.example .env
 
-CMD python manage.py migrate && \
-    gunicorn core.wsgi:application --bind 0.0.0.0:8000
+COPY .deploy/entrypoint.sh /
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 8000
+
+ENTRYPOINT ["sh", "/entrypoint.sh"]

@@ -100,6 +100,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -131,7 +134,6 @@ MODELTRANSLATION_DEFAULT_LANGUAGE = 'uz'
 LOCALE_PATHS = [
     os.path.join(BASE_DIR, 'locale/'),
 ]
-
 
 # Static files (CSS, JavaScript, Images)
 
@@ -250,7 +252,6 @@ SESSION_CACHE_ALIAS = "default"
 
 BIRTH_YEAR_MIN = 1900
 BIRTH_YEAR_MAX = datetime.now().year
-
 
 # email
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')

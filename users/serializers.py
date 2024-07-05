@@ -4,6 +4,8 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from rest_framework.exceptions import NotFound
+
 from users.errors import BIRTH_YEAR_ERROR_MSG
 from django.contrib.auth.password_validation import validate_password
 
@@ -46,12 +48,12 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'first_name', 'last_name', 'middle_name', 'email', 'avatar', 'birth_year']
 
-    def validate_birth_year(self, value):   # tug'ilgan yil oralig'ini tekshirish uchun to'rtinchi variant
+    def validate_birth_year(self, value):  # tug'ilgan yil oralig'ini tekshirish uchun to'rtinchi variant
         if not (settings.BIRTH_YEAR_MIN < value < settings.BIRTH_YEAR_MAX):
             raise serializers.ValidationError(BIRTH_YEAR_ERROR_MSG)
         return value
 
-    def validate(self, data):               # tug'ilgan yil oralig'ini tekshirish uchun beshinchi variant
+    def validate(self, data):  # tug'ilgan yil oralig'ini tekshirish uchun beshinchi variant
         birth_year = data.get('birth_year')
         if birth_year is not None:
             if not (settings.BIRTH_YEAR_MIN < birth_year < settings.BIRTH_YEAR_MAX):
@@ -115,7 +117,7 @@ class ForgotPasswordRequestSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         if not User.objects.filter(email=value).exists():
-            raise ValidationError(_("Email topilmadi."))
+            raise NotFound(_("Bu email bilan foydalanuvchi topilmadi"))
         return value
 
 
@@ -126,7 +128,7 @@ class ForgotPasswordResponseSerializer(serializers.Serializer):
 
 class ForgotPasswordVerifyRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
-    otp_code = serializers.CharField(required=True, max_length=6)
+    otp_code = serializers.CharField(required=True)
 
 
 class ForgotPasswordVerifyResponseSerializer(serializers.Serializer):

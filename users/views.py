@@ -1,13 +1,19 @@
-from django.conf import settings
-from rest_framework import status, permissions, generics, parsers
+from secrets import token_urlsafe
+
+from django.contrib.auth import authenticate, update_session_auth_hash
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
+from django.utils.translation import gettext_lazy as _
+from django_redis import get_redis_connection
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework import status, permissions, generics, parsers, exceptions
+from rest_framework.exceptions import ValidationError, AuthenticationFailed
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.contrib.auth import authenticate, update_session_auth_hash
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import IsAuthenticated
-from .utils import SendEmailService
-from django.utils.translation import gettext_lazy as _
-from .enums import TokenType
+
+from .errors import ACTIVE_USER_NOT_FOUND_ERROR_MSG
 from .serializers import (
     UserSerializer,
     LoginSerializer,
@@ -19,15 +25,12 @@ from .serializers import (
     ForgotPasswordVerifyRequestSerializer,
     ResetPasswordResponseSerializer,
     ForgotPasswordVerifyResponseSerializer,
-    ForgotPasswordResponseSerializer, )
-from django.contrib.auth import get_user_model
-from drf_spectacular.utils import extend_schema, extend_schema_view
-from django_redis import get_redis_connection
-from secrets import token_urlsafe
-from django.contrib.auth.hashers import make_password
+    ForgotPasswordResponseSerializer,
+)
 from .services import (
-    TokenService, UserService,
-    OTPService, OTPException, )
+    UserService,
+    OTPService, SendEmailService,
+)
 
 User = get_user_model()
 
@@ -57,7 +60,7 @@ class SignupView(APIView):
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationError(serializer.errors)
 
 
 @extend_schema_view(
@@ -86,9 +89,9 @@ class LoginView(APIView):
 
         if user is not None:
             tokens = UserService.create_tokens(user)
-            return Response(tokens, status=status.HTTP_200_OK)
+            return Response(tokens)
         else:
-            return Response({'detail': _('Hisob maʼlumotlari yaroqsiz')}, status=status.HTTP_401_UNAUTHORIZED)
+            raise AuthenticationFailed(_('Hisob maʼlumotlari yaroqsiz'))
 
 
 @extend_schema_view(
@@ -146,19 +149,8 @@ class LogoutView(generics.GenericAPIView):
 
     @extend_schema(responses=None)
     def post(self, request, *args, **kwargs):
-        TokenService.add_token_to_redis(
-            request.user.id,
-            'fake_token',
-            TokenType.ACCESS,
-            settings.SIMPLE_JWT.get("ACCESS_TOKEN_LIFETIME"),
-        )
-        TokenService.add_token_to_redis(
-            request.user.id,
-            'fake_token',
-            TokenType.REFRESH,
-            settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
-        )
-        return Response({"detail": _("Mufaqqiyatli chiqildi.")}, status=status.HTTP_200_OK)
+        UserService.create_tokens(request.user, access='fake_token', refresh='fake_token', is_force_add_to_redis=True)
+        return Response({"detail": _("Mufaqqiyatli chiqildi.")})
 
 
 @extend_schema_view(
@@ -188,32 +180,11 @@ class ChangePasswordView(APIView):
         if user is not None:
             user.set_password(serializer.validated_data['new_password'])
             user.save()
-
             update_session_auth_hash(request, user)
-
-            tokens = UserService.create_tokens(user)
-
-            TokenService.add_token_to_redis(
-                request.user.id,
-                tokens['access'],
-                TokenType.ACCESS,
-                settings.SIMPLE_JWT.get("ACCESS_TOKEN_LIFETIME"),
-            )
-            TokenService.add_token_to_redis(
-                request.user.id,
-                tokens['refresh'],
-                TokenType.REFRESH,
-                settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
-            )
-
-            return Response({
-                "access": tokens['access'],
-                "refresh": tokens['refresh'],
-            }, status=status.HTTP_200_OK)
+            tokens = UserService.create_tokens(user, is_force_add_to_redis=True)
+            return Response(tokens)
         else:
-            return Response({
-                "detail": _("Eski parol xato.")
-            }, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError(_("Eski parol xato."))
 
 
 @extend_schema_view(
@@ -222,7 +193,9 @@ class ChangePasswordView(APIView):
         request=ForgotPasswordRequestSerializer,
         responses={
             200: ForgotPasswordResponseSerializer,
-            401: ValidationErrorSerializer
+            400: ValidationErrorSerializer,
+            401: ValidationErrorSerializer,
+            404: ValidationErrorSerializer,
         }
     )
 )
@@ -237,23 +210,20 @@ class ForgotPasswordView(generics.CreateAPIView):
         email = serializer.validated_data['email']
         users = User.objects.filter(email=email, is_active=True)
         if not users.exists():
-            raise Exception(404, _("Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"))
+            raise exceptions.NotFound(ACTIVE_USER_NOT_FOUND_ERROR_MSG)
+
+        otp_code, otp_secret = OTPService.generate_otp(email=email, expire_in=2 * 60)
 
         try:
-            otp_code, otp_secret = OTPService.generate_otp(email=email, expire_in=2 * 60)
-        except OTPException as e:
-            return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
-
-        res_code = SendEmailService.send_email(email, otp_code)
-        if res_code == 200:
+            SendEmailService.send_email(email, otp_code)
             return Response({
                 "email": email,
                 "otp_secret": otp_secret,
             })
-        else:
+        except Exception:
             redis_conn = OTPService.get_redis_conn()
-            redis_conn.delete(email=email)
-            return Response({"detail": _("Email yuborishda nimadir noto'g'ri")}, status=res_code)
+            redis_conn.delete(f"{email}:otp")
+            raise ValidationError(_("Emailga xabar yuborishda xatolik yuz berdi"))
 
 
 @extend_schema_view(
@@ -262,7 +232,9 @@ class ForgotPasswordView(generics.CreateAPIView):
         request=ForgotPasswordVerifyRequestSerializer,
         responses={
             200: ForgotPasswordVerifyResponseSerializer,
-            401: ValidationErrorSerializer
+            400: ValidationErrorSerializer,
+            401: ValidationErrorSerializer,
+            404: ValidationErrorSerializer,
         }
     )
 )
@@ -280,18 +252,12 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
         email = serializer.validated_data['email']
         users = User.objects.filter(email=email, is_active=True)
         if not users.exists():
-            return Response({"detail": _("Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")}, status=status.HTTP_404_NOT_FOUND)
-
-        try:
-            OTPService.check_otp(email, otp_code, otp_secret)
-        except OTPException as e:
-            return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
-
+            raise exceptions.NotFound(ACTIVE_USER_NOT_FOUND_ERROR_MSG)
+        OTPService.check_otp(email, otp_code, otp_secret)
         redis_conn.delete(f"{email}:otp")
         token_hash = make_password(token_urlsafe())
         redis_conn.set(token_hash, email, ex=2 * 60 * 60)
-
-        return Response({"token": token_hash}, status=status.HTTP_200_OK)
+        return Response({"token": token_hash})
 
 
 @extend_schema_view(
@@ -300,7 +266,9 @@ class ForgotPasswordVerifyView(generics.CreateAPIView):
         request=ResetPasswordResponseSerializer,
         responses={
             200: TokenResponseSerializer,
-            401: ValidationErrorSerializer
+            400: ValidationErrorSerializer,
+            401: ValidationErrorSerializer,
+            404: ValidationErrorSerializer,
         }
     )
 )
@@ -319,13 +287,11 @@ class ResetPasswordView(generics.UpdateAPIView):
         email = redis_conn.get(token_hash)
 
         if not email:
-            return Response({"detail": _("Token yaroqsiz")}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError(_("Token yaroqsiz"))
 
-        email = email.decode()
-        users = User.objects.filter(email=email, is_active=True)
-
+        users = User.objects.filter(email=email.decode(), is_active=True)
         if not users.exists():
-            return Response({"detail": _("Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!")}, status=status.HTTP_404_NOT_FOUND)
+            raise exceptions.NotFound(ACTIVE_USER_NOT_FOUND_ERROR_MSG)
 
         password = serializer.validated_data['password']
         user = users.first()
@@ -333,22 +299,6 @@ class ResetPasswordView(generics.UpdateAPIView):
         user.save()
 
         update_session_auth_hash(request, user)
-
-        tokens = UserService.create_tokens(user)
-
-        TokenService.add_token_to_redis(
-            request.user.id,
-            tokens['access'],
-            TokenType.ACCESS,
-            settings.SIMPLE_JWT.get("ACCESS_TOKEN_LIFETIME"),
-        )
-        TokenService.add_token_to_redis(
-            request.user.id,
-            tokens['refresh'],
-            TokenType.REFRESH,
-            settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME"),
-        )
-
+        tokens = UserService.create_tokens(user, is_force_add_to_redis=True)
         redis_conn.delete(token_hash)
-
-        return Response(tokens, status=status.HTTP_200_OK)
+        return Response(tokens)

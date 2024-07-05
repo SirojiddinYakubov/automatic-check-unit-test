@@ -3,15 +3,20 @@ import random
 import string
 import uuid
 from secrets import token_urlsafe
+
 import redis
 from decouple import config
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password, check_password
+from django.core.mail import EmailMessage
+from django.template.loader import render_to_string
 from django.utils.translation import gettext_lazy as _
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from users.enums import TokenType
 from loguru import logger
+from users.exceptions import OTPException
 
 REDIS_HOST = config("REDIS_HOST", None)
 REDIS_PORT = config("REDIS_PORT", None)
@@ -62,7 +67,13 @@ class TokenService:
 class UserService:
 
     @classmethod
-    def create_tokens(cls, user: User, access: str = None, refresh: str = None) -> dict[str, str]:
+    def create_tokens(
+            cls,
+            user: User,
+            access: str = None,
+            refresh: str = None,
+            is_force_add_to_redis: bool = False
+    ) -> dict[str, str]:
         if not access or not refresh:
             refresh = RefreshToken.for_user(user)
             access = str(getattr(refresh, "access_token"))
@@ -70,7 +81,7 @@ class UserService:
         valid_access_tokens = TokenService.get_valid_tokens(
             user_id=user.id, token_type=TokenType.ACCESS
         )
-        if valid_access_tokens:
+        if valid_access_tokens or is_force_add_to_redis:
             TokenService.add_token_to_redis(
                 user.id,
                 access,
@@ -81,7 +92,7 @@ class UserService:
         valid_refresh_tokens = TokenService.get_valid_tokens(
             user_id=user.id, token_type=TokenType.REFRESH
         )
-        if valid_refresh_tokens:
+        if valid_refresh_tokens or is_force_add_to_redis:
             TokenService.add_token_to_redis(
                 user.id,
                 refresh,
@@ -91,14 +102,6 @@ class UserService:
         return {"access": access, "refresh": refresh}
 
 
-class OTPException(Exception):
-    def __init__(self, message, ttl=None):
-        self.message = message
-        self.ttl = ttl
-        super().__init__(self.message)
-
-
-
 class OTPService:
     @classmethod
     def get_redis_conn(cls) -> redis.Redis:
@@ -106,10 +109,10 @@ class OTPService:
 
     @classmethod
     def generate_otp(
-        cls,
-        email: str,
-        expire_in: int = 120,
-        check_if_exists: bool = True
+            cls,
+            email: str,
+            expire_in: int = 120,
+            check_if_exists: bool = True
     ) -> tuple[str, str]:
         redis_conn = cls.get_redis_conn()
         otp_code = "".join(random.choices(string.digits, k=6))
@@ -120,8 +123,9 @@ class OTPService:
 
         if check_if_exists and redis_conn.exists(key):
             ttl = redis_conn.ttl(key)
-            raise OTPException(_("Sizda yaroqli OTP kodingiz bor. {} soniyadan keyin qayta urinib koʻring.").format(ttl), ttl)
-
+            raise OTPException(
+                _("Sizda yaroqli OTP kodingiz bor. {ttl} soniyadan keyin qayta urinib koʻring.").format(ttl=ttl)
+            )
         redis_conn.set(key, otp_hash, ex=expire_in)
         return otp_code, secret_token
 
@@ -137,3 +141,22 @@ class OTPService:
     @classmethod
     def generate_token(cls) -> str:
         return str(uuid.uuid4())
+
+
+class SendEmailService:
+    @staticmethod
+    def send_email(email, otp_code):
+        subject = 'Welcome to Our Service!'
+        message = render_to_string('emails/email_template.html', {
+            'email': email,
+            'otp_code': otp_code
+        })
+
+        email = EmailMessage(
+            subject,
+            message,
+            settings.EMAIL_HOST_USER,
+            [email]
+        )
+        email.content_subtype = 'html'
+        email.send(fail_silently=False)

@@ -30,6 +30,7 @@ class CustomJWTAuthentication(JWTAuthentication):
     @classmethod
     def is_valid_access_token(cls, user: User, access_token: Token) -> bool:
         valid_access_tokens = TokenService.get_valid_tokens(user.id, TokenType.ACCESS)
+        print(33, valid_access_tokens)
         if (
                 valid_access_tokens
                 and str(access_token).encode() not in valid_access_tokens

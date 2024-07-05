@@ -38,7 +38,6 @@ def test_custom_user_meta_class():
     }
     assert expected_indexes.issubset(index_names)
 
-
     constraint_names = {constraint.name for constraint in meta.constraints}
     expected_constraints = {'check_birth_year_range'}
     assert expected_constraints.issubset(constraint_names)
@@ -47,6 +46,7 @@ def test_custom_user_meta_class():
 VALID_BIRTH_YEAR = (settings.BIRTH_YEAR_MIN + settings.BIRTH_YEAR_MAX) // 2
 INVALID_BIRTH_YEAR_LOW = settings.BIRTH_YEAR_MIN - 1
 INVALID_BIRTH_YEAR_HIGH = settings.BIRTH_YEAR_MAX + 1
+
 
 @pytest.mark.parametrize("birth_year, is_valid", [
     (VALID_BIRTH_YEAR, True),
@@ -63,18 +63,15 @@ def test_validate_birth_year(birth_year, is_valid):
 
 
 def test_validate_method():
-
     valid_data = {'birth_year': VALID_BIRTH_YEAR}
     serializer = UserUpdateSerializer(data=valid_data)
     assert serializer.is_valid()
-
 
     invalid_data_low = {'birth_year': INVALID_BIRTH_YEAR_LOW}
     serializer = UserUpdateSerializer(data=invalid_data_low)
     with pytest.raises(serializers.ValidationError) as excinfo:
         serializer.is_valid(raise_exception=True)
     assert 'birth_year' in excinfo.value.detail
-
 
     invalid_data_high = {'birth_year': INVALID_BIRTH_YEAR_HIGH}
     serializer = UserUpdateSerializer(data=invalid_data_high)

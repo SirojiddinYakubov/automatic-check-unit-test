@@ -33,13 +33,13 @@ jobs:
           sleep 5s
           curl -v http://127.0.0.1:8000/health/
 
-#      - name: Download test zip File
-#        run: |
-#          curl -L "${{ secrets.CHECK_FILE }}" > tests.zip
-#
-#      - name: Unzip check test zip folder
-#        run: |
-#          unzip tests.zip
+      - name: Download test zip File
+        run: |
+          curl -L "${{ secrets.CHECK_FILE }}" > tests.zip
+
+      - name: Unzip check test zip folder
+        run: |
+          unzip tests.zip
 
 #      - name: Test database connection
 #        run: |

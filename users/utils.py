@@ -1,6 +1,7 @@
 from django.core.mail import EmailMessage
 from django.conf import settings
 from django.template.loader import render_to_string
+from loguru import logger
 
 
 class SendEmailService:
@@ -21,6 +22,7 @@ class SendEmailService:
             )
             email.content_subtype = 'html'
             email.send(fail_silently=False)
+            logger.debug(f"Email sent: email={email};")
 
             return 200
         except Exception:

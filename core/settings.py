@@ -262,7 +262,12 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='your_email@gmail.com')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your_password')
 
 # LOGURU settings
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+LOG_FILE = '/debug.log'
+LOG_PATH = LOG_DIR + LOG_FILE
 
+if not os.path.exists(LOG_DIR):
+    os.mkdir(LOG_DIR)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

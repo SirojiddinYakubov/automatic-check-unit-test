@@ -21,7 +21,12 @@ jobs:
         run: cp .env.example .env
 
       - name: Run app
-        run: docker compose up -d --build
+        run: |
+          docker compose up -d --build
+          sleep 5s
+          docker ps -a
+          sleep 5s
+          docker logs medium_app
 
       - name: Curl
         run: |
@@ -45,7 +50,7 @@ jobs:
 #        continue-on-error: true
 
       - name: Run Tests
-        run: docker compose exec app pytest -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2
+        run: docker compose exec medium_app pytest -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2
         continue-on-error: true
 
       - name: Upload artifact

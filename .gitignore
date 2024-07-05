@@ -107,3 +107,4 @@ collection.json
 reports
 tests/.pytest_cache
 .pytest_cache
+logs

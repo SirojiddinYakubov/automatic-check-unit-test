@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from ckeditor.fields import RichTextField
+from django.core import validators
 
 User = get_user_model()
 
@@ -48,7 +49,11 @@ class Article(BaseModel):
         max_length=50, choices=ArticleStatus.choices, default=ArticleStatus.DRAFT
     )
     topics = models.ManyToManyField(Topic, limit_choices_to={'is_active': True}, related_name="articles")
-    views_count = models.PositiveIntegerField(default=0)
+    views_count = models.PositiveIntegerField(
+        default=0,
+        validators=[
+            validators.MinValueValidator(0)
+        ])
 
     class Meta:
         db_table = "article"
@@ -99,7 +104,12 @@ class Clap(BaseModel):
         User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="claps")
     article = models.ForeignKey(
         Article, on_delete=models.CASCADE, related_name="claps")
-    count = models.PositiveIntegerField(default=0)  # min:0, max:50
+    count = models.PositiveIntegerField(
+        default=0,
+        validators=[
+            validators.MinValueValidator(0),
+            validators.MaxValueValidator(50)
+        ])
 
     class Meta:
         db_table = "clap"

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from ckeditor.fields import RichTextField
 
 User = get_user_model()
 
@@ -25,19 +26,35 @@ class Topic(BaseModel):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
 
+    class Meta:
+        verbose_name = "Topic"
+        verbose_name_plural = "Topics"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
 
 class Article(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     summary = models.TextField()
-    content = models.TextField()
+    content = RichTextField()
     thumbnail = models.ImageField(
-        upload_to="thumbnails/", blank=True, null=True)
+        upload_to="articles/thumbnails/", blank=True, null=True)
     status = models.CharField(
         max_length=50, choices=ArticleStatus.choices, default=ArticleStatus.DRAFT
     )
     topics = models.ManyToManyField(Topic, related_name="articles")
-    views_count = models.IntegerField(default=0)
+    views_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Article"
+        verbose_name_plural = "Articles"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
 
 
 class Comment(BaseModel):
@@ -48,7 +65,15 @@ class Comment(BaseModel):
     parent = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies"
     )
-    content = models.TextField()
+    content = RichTextField()
+
+    class Meta:
+        verbose_name = "Comment"
+        verbose_name_plural = "Comments"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Comment by {self.user} on {self.article}"
 
 
 class Favorite(BaseModel):
@@ -58,6 +83,11 @@ class Favorite(BaseModel):
         Article, on_delete=models.CASCADE, related_name="favorites"
     )
 
+    class Meta:
+        verbose_name = "Favorite"
+        verbose_name_plural = "Favorites"
+        ordering = ['-created_at']
+
 
 class Clap(BaseModel):
     user = models.ForeignKey(
@@ -66,12 +96,22 @@ class Clap(BaseModel):
         Article, on_delete=models.CASCADE, related_name="claps")
     count = models.PositiveIntegerField(default=0)  # min:0, max:50
 
+    class Meta:
+        verbose_name = "Clap"
+        verbose_name_plural = "Claps"
+        ordering = ['-created_at']
+
 
 class Pin(BaseModel):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="pins")
     article = models.ForeignKey(
         Article, on_delete=models.CASCADE, related_name="pins")
+
+    class Meta:
+        verbose_name = "Pin"
+        verbose_name_plural = "Pins"
+        ordering = ['-created_at']
 
 
 class Follow(BaseModel):
@@ -81,6 +121,11 @@ class Follow(BaseModel):
     followee = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="followers"
     )
+
+    class Meta:
+        verbose_name = "Follow"
+        verbose_name_plural = "Follows"
+        ordering = ['-created_at']
 
 
 class Recommendation(BaseModel):
@@ -94,6 +139,11 @@ class Recommendation(BaseModel):
         Topic, on_delete=models.CASCADE, related_name="less_recommended"
     )
 
+    class Meta:
+        verbose_name = "Recommendation"
+        verbose_name_plural = "Recommendations"
+        ordering = ['-created_at']
+
 
 class Notification(BaseModel):
     user = models.ForeignKey(
@@ -101,6 +151,11 @@ class Notification(BaseModel):
     )
     message = models.TextField()
     read_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"
+        ordering = ['-created_at']
 
 
 class ReadingHistory(BaseModel):
@@ -111,6 +166,11 @@ class ReadingHistory(BaseModel):
         Article, on_delete=models.CASCADE, related_name="reading_history"
     )
 
+    class Meta:
+        verbose_name = "Reading History"
+        verbose_name_plural = "Reading Histories"
+        ordering = ['-created_at']
+
 
 class TopicFollow(BaseModel):
     user = models.ForeignKey(
@@ -120,6 +180,11 @@ class TopicFollow(BaseModel):
         Topic, on_delete=models.CASCADE, related_name="topic_follows"
     )
 
+    class Meta:
+        verbose_name = "Topic Follow"
+        verbose_name_plural = "Topic Follows"
+        ordering = ['-created_at']
+
 
 class Report(BaseModel):
     user = models.ForeignKey(
@@ -127,7 +192,20 @@ class Report(BaseModel):
     topic = models.ForeignKey(
         Topic, on_delete=models.CASCADE, related_name="reports")
 
+    class Meta:
+        verbose_name = "Report"
+        verbose_name_plural = "Reports"
+        ordering = ['-created_at']
+
 
 class FAQ(BaseModel):
     question = models.CharField(max_length=255)
-    answer = models.TextField()
+    answer = RichTextField()
+
+    class Meta:
+        verbose_name = "FAQ"
+        verbose_name_plural = "FAQs"
+        ordering = ['question']
+
+    def __str__(self):
+        return self.question

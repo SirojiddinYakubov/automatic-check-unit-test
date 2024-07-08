@@ -36,6 +36,8 @@ EXTERNAL_APPS = [
     'drf_spectacular',
     'django_redis',
     'modeltranslation',
+    'ckeditor',
+    'ckeditor_uploader',
 ]
 
 LOCAL_APPS = [
@@ -147,6 +149,21 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / "media"
 
+
+# ckeditor
+CKEDITOR_BASEPATH = "/static/ckeditor/ckeditor/"
+CKEDITOR_UPLOAD_PATH = "uploads/"
+CKEDITOR_IMAGE_BACKEND = "pillow"
+
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'full',
+        'height': 300,
+        'width': '100%',
+        "versionCheck": False
+    },
+}
+
 # Default primary key field type
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -255,7 +272,8 @@ BIRTH_YEAR_MIN = 1900
 BIRTH_YEAR_MAX = datetime.now().year
 
 # email
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_BACKEND = config(
+    'EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)

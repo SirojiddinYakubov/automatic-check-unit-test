@@ -49,11 +49,7 @@ class Article(BaseModel):
         max_length=50, choices=ArticleStatus.choices, default=ArticleStatus.DRAFT
     )
     topics = models.ManyToManyField(Topic, limit_choices_to={'is_active': True}, related_name="articles")
-    views_count = models.PositiveIntegerField(
-        default=0,
-        validators=[
-            validators.MinValueValidator(0)
-        ])
+    views_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = "article"
@@ -107,7 +103,6 @@ class Clap(BaseModel):
     count = models.PositiveIntegerField(
         default=0,
         validators=[
-            validators.MinValueValidator(0),
             validators.MaxValueValidator(50)
         ])
 

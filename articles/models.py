@@ -32,7 +32,7 @@ class Article(BaseModel):
     summary = models.TextField()
     content = models.TextField()
     thumbnail = models.ImageField(
-        upload_to="thumbnails/", blank=True, null=True)
+        upload_to="articles/thumbnails/", blank=True, null=True)
     status = models.CharField(
         max_length=50, choices=ArticleStatus.choices, default=ArticleStatus.DRAFT
     )

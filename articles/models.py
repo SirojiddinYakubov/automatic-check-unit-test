@@ -27,6 +27,7 @@ class Topic(BaseModel):
     description = models.TextField(blank=True, null=True)
 
     class Meta:
+        db_table = "topic"
         verbose_name = "Topic"
         verbose_name_plural = "Topics"
         ordering = ['name']
@@ -49,6 +50,7 @@ class Article(BaseModel):
     views_count = models.PositiveIntegerField(default=0)
 
     class Meta:
+        db_table = "article"
         verbose_name = "Article"
         verbose_name_plural = "Articles"
         ordering = ['-created_at']
@@ -68,6 +70,7 @@ class Comment(BaseModel):
     content = RichTextField()
 
     class Meta:
+        db_table = "comment"
         verbose_name = "Comment"
         verbose_name_plural = "Comments"
         ordering = ['-created_at']
@@ -84,6 +87,7 @@ class Favorite(BaseModel):
     )
 
     class Meta:
+        db_table = "favorite"
         verbose_name = "Favorite"
         verbose_name_plural = "Favorites"
         ordering = ['-created_at']
@@ -97,6 +101,7 @@ class Clap(BaseModel):
     count = models.PositiveIntegerField(default=0)  # min:0, max:50
 
     class Meta:
+        db_table = "clap"
         verbose_name = "Clap"
         verbose_name_plural = "Claps"
         ordering = ['-created_at']
@@ -109,6 +114,7 @@ class Pin(BaseModel):
         Article, on_delete=models.CASCADE, related_name="pins")
 
     class Meta:
+        db_table = "pin"
         verbose_name = "Pin"
         verbose_name_plural = "Pins"
         ordering = ['-created_at']
@@ -123,6 +129,7 @@ class Follow(BaseModel):
     )
 
     class Meta:
+        db_table = "follow"
         verbose_name = "Follow"
         verbose_name_plural = "Follows"
         ordering = ['-created_at']
@@ -140,6 +147,7 @@ class Recommendation(BaseModel):
     )
 
     class Meta:
+        db_table = "recommendation"
         verbose_name = "Recommendation"
         verbose_name_plural = "Recommendations"
         ordering = ['-created_at']
@@ -153,6 +161,7 @@ class Notification(BaseModel):
     read_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
+        db_table = "notification"
         verbose_name = "Notification"
         verbose_name_plural = "Notifications"
         ordering = ['-created_at']
@@ -167,6 +176,7 @@ class ReadingHistory(BaseModel):
     )
 
     class Meta:
+        db_table = "reading_history"
         verbose_name = "Reading History"
         verbose_name_plural = "Reading Histories"
         ordering = ['-created_at']
@@ -181,6 +191,7 @@ class TopicFollow(BaseModel):
     )
 
     class Meta:
+        db_table = "topic_follow"
         verbose_name = "Topic Follow"
         verbose_name_plural = "Topic Follows"
         ordering = ['-created_at']
@@ -193,6 +204,7 @@ class Report(BaseModel):
         Topic, on_delete=models.CASCADE, related_name="reports")
 
     class Meta:
+        db_table = "report"
         verbose_name = "Report"
         verbose_name_plural = "Reports"
         ordering = ['-created_at']
@@ -203,6 +215,7 @@ class FAQ(BaseModel):
     answer = RichTextField()
 
     class Meta:
+        db_table = "faq"
         verbose_name = "FAQ"
         verbose_name_plural = "FAQs"
         ordering = ['question']

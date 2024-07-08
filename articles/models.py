@@ -24,6 +24,7 @@ class ArticleStatus(models.TextChoices):
 
 class Topic(BaseModel):
     name = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
     description = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -37,7 +38,7 @@ class Topic(BaseModel):
 
 
 class Article(BaseModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(User, limit_choices_to={'is_active': True}, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     summary = models.TextField()
     content = RichTextField()
@@ -46,7 +47,7 @@ class Article(BaseModel):
     status = models.CharField(
         max_length=50, choices=ArticleStatus.choices, default=ArticleStatus.DRAFT
     )
-    topics = models.ManyToManyField(Topic, related_name="articles")
+    topics = models.ManyToManyField(Topic, limit_choices_to={'is_active': True}, related_name="articles")
     views_count = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -63,7 +64,7 @@ class Comment(BaseModel):
     article = models.ForeignKey(
         Article, on_delete=models.CASCADE, related_name="comments"
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, limit_choices_to={'is_active': True}, on_delete=models.CASCADE)
     parent = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies"
     )
@@ -81,7 +82,7 @@ class Comment(BaseModel):
 
 class Favorite(BaseModel):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="favorites")
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="favorites")
     article = models.ForeignKey(
         Article, on_delete=models.CASCADE, related_name="favorites"
     )
@@ -95,7 +96,7 @@ class Favorite(BaseModel):
 
 class Clap(BaseModel):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="claps")
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="claps")
     article = models.ForeignKey(
         Article, on_delete=models.CASCADE, related_name="claps")
     count = models.PositiveIntegerField(default=0)  # min:0, max:50
@@ -109,7 +110,7 @@ class Clap(BaseModel):
 
 class Pin(BaseModel):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="pins")
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="pins")
     article = models.ForeignKey(
         Article, on_delete=models.CASCADE, related_name="pins")
 
@@ -122,10 +123,10 @@ class Pin(BaseModel):
 
 class Follow(BaseModel):
     follower = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="following"
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="following"
     )
     followee = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="followers"
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="followers"
     )
 
     class Meta:
@@ -137,13 +138,13 @@ class Follow(BaseModel):
 
 class Recommendation(BaseModel):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="recommendations"
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="recommendations"
     )
     more = models.ForeignKey(
-        Topic, on_delete=models.CASCADE, related_name="more_recommended"
+        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="more_recommended"
     )
     less = models.ForeignKey(
-        Topic, on_delete=models.CASCADE, related_name="less_recommended"
+        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="less_recommended"
     )
 
     class Meta:
@@ -155,7 +156,7 @@ class Recommendation(BaseModel):
 
 class Notification(BaseModel):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="notifications"
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="notifications"
     )
     message = models.TextField()
     read_at = models.DateTimeField(blank=True, null=True)
@@ -169,7 +170,7 @@ class Notification(BaseModel):
 
 class ReadingHistory(BaseModel):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="reading_history"
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="reading_history"
     )
     article = models.ForeignKey(
         Article, on_delete=models.CASCADE, related_name="reading_history"
@@ -184,10 +185,10 @@ class ReadingHistory(BaseModel):
 
 class TopicFollow(BaseModel):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="topic_follows"
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="topic_follows"
     )
     topic = models.ForeignKey(
-        Topic, on_delete=models.CASCADE, related_name="topic_follows"
+        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="topic_follows"
     )
 
     class Meta:
@@ -199,9 +200,9 @@ class TopicFollow(BaseModel):
 
 class Report(BaseModel):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="reports")
+        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="reports")
     topic = models.ForeignKey(
-        Topic, on_delete=models.CASCADE, related_name="reports")
+        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="reports")
 
     class Meta:
         db_table = "report"

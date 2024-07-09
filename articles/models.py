@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from ckeditor.fields import RichTextField
 from django.core import validators
+from django.db.models import Sum
 
 User = get_user_model()
 
@@ -60,6 +61,23 @@ class Article(BaseModel):
     def __str__(self):
         return self.title
 
+    @property
+    def comments_count(self):
+        return self.comments.count()
+
+    @property
+    def claps_count(self):
+        total_claps = self.claps.aggregate(total_claps=Sum('count'))['total_claps']
+        return total_claps or 0
+
+    @property
+    def formatted_created_at(self):
+        return self.created_at.strftime("%b %d, %Y")
+
+    @property
+    def formatted_updated_at(self):
+        return self.updated_at.strftime("%b %d, %Y")
+
 
 class Comment(BaseModel):
     article = models.ForeignKey(
@@ -112,6 +130,9 @@ class Clap(BaseModel):
         verbose_name_plural = "Claps"
         ordering = ['-created_at']
 
+    def __str__(self):
+        return f"{self.user} - {self.count}"
+
 
 class Pin(BaseModel):
     user = models.ForeignKey(
@@ -149,7 +170,7 @@ class Recommendation(BaseModel):
         Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="more_recommended"
     )
     less = models.ForeignKey(
-        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="less_recommended"
+        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="less_recommended", null=True, blank=True
     )
 
     class Meta:
@@ -201,6 +222,10 @@ class TopicFollow(BaseModel):
         verbose_name = "Topic Follow"
         verbose_name_plural = "Topic Follows"
         ordering = ['-created_at']
+        unique_together = ('user', 'topic')
+
+    def __str__(self):
+        return f"{self.user.username} follows {self.topic.name}"
 
 
 class Report(BaseModel):

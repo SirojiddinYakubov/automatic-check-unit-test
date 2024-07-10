@@ -1,5 +1,6 @@
 import django_filters
 from .models import Article, Topic
+from django.db.models import Q
 from django.db.models import Count
 
 class ArticleFilter(django_filters.FilterSet):
@@ -43,3 +44,20 @@ class TopicFilter(django_filters.FilterSet):
     def filter_by_recommend(self, queryset, name, value):
         queryset = Topic.objects.annotate(num_followers=Count('topic_follows')).order_by('-num_followers')[:5]
         return queryset
+
+
+class SearchFilter(django_filters.FilterSet):
+    search = django_filters.CharFilter(method='search_filter')
+
+    class Meta:
+        model = Article
+        fields = []
+
+    def search_filter(self, queryset, name, value):
+        return queryset.filter(
+            Q(title__icontains=value) |
+            Q(summary__icontains=value) |
+            Q(content__icontains=value) |
+            Q(topics__name__icontains=value) |
+            Q(topics__description__icontains=value)
+        ).distinct()

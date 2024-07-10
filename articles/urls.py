@@ -10,4 +10,5 @@ router.register(r'comments', views.CommentCreateView, basename='comments')
 urlpatterns = [
     path('', include(router.urls)),
     path('topics/follow/', views.TopicFollowView.as_view(), name='topic-follow'),
+    path('search/', views.SearchView.as_view(), name='article-search'),
 ]

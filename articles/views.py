@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import permissions, status, viewsets, parsers
+from rest_framework import permissions, status, viewsets, parsers, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
@@ -8,10 +8,10 @@ from .models import Topic, Article, TopicFollow, ArticleStatus, Comment
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
     ArticleDeleteSerializer, ArticleDetailSerializer,
-    TopicSerializer, TopicFollowSerializer, CommentSerializer)
+    TopicSerializer, TopicFollowSerializer, CommentSerializer,)
 from users.serializers import ValidationErrorSerializer
 from django_filters.rest_framework import DjangoFilterBackend
-from .filters import ArticleFilter, TopicFilter
+from .filters import ArticleFilter, TopicFilter, SearchFilter
 
 User = get_user_model()
 
@@ -174,3 +174,16 @@ class CommentCreateView(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Search",
+        request=ArticleListSerializer,
+        responses={200: ArticleListSerializer}
+    ))
+class SearchView(generics.ListAPIView):
+    queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
+    serializer_class = ArticleListSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = SearchFilter

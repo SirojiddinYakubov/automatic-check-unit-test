@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from ckeditor.fields import RichTextField
 from django.core import validators
-from django.db.models import Sum
 from django.db.models import UniqueConstraint
 
 User = get_user_model()
@@ -63,16 +62,6 @@ class Article(BaseModel):
 
     def __str__(self):
         return self.title
-
-    @property
-    def comments_count(self):
-        return self.comments.count()
-
-    @property
-    def claps_count(self):
-        total_claps = self.claps.aggregate(
-            total_claps=Sum('count'))['total_claps']
-        return total_claps or 0
 
 
 class Comment(BaseModel):

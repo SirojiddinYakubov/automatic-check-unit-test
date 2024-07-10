@@ -24,6 +24,7 @@ User = get_user_model()
         responses={200: ArticleListSerializer, 401: ValidationErrorSerializer}
     ),
     list=extend_schema(
+        operation_id="list_articles",
         summary="List articles",
         responses={200: ArticleListSerializer(many=True)}
     ),
@@ -191,10 +192,20 @@ class SearchView(generics.ListAPIView):
     filterset_class = SearchFilter
 
 
+@extend_schema_view(
+    post=extend_schema(
+        summary="Add Article To Favorite",
+        request=ArticleListSerializer,
+        responses={200: ArticleListSerializer}
+    ),
+    delete=extend_schema(
+        summary="Delete Favorite",
+        request=ArticleListSerializer
+    ))
 class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
-    serializer_class = ArticleListSerializer(many=True)
+    serializer_class = ArticleListSerializer
 
     def post(self, request, *args, **kwargs):
         article = self.get_object()
@@ -213,6 +224,12 @@ class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
         return Response({'detail': 'Article removed from favorites'}, status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        summary="User Favorites",
+        request=FavoriteSerializer,
+        responses={200: ArticleListSerializer}
+    ))
 class UserFavoritesListView(generics.ListAPIView):
     serializer_class = FavoriteSerializer
     permission_classes = [permissions.IsAuthenticated]

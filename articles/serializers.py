@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from .models import Topic, Article, Comment, Clap, Favorite
 from users.serializers import UserSerializer
+from drf_spectacular.utils import extend_schema_field
+from django.db.models import Sum
 
 
 class TopicSerializer(serializers.ModelSerializer):
@@ -29,6 +31,17 @@ class ClapSerializer(serializers.ModelSerializer):
 class ArticleListSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     topics = TopicSerializer(many=True, read_only=True)
+    comments_count = serializers.SerializerMethodField()
+    claps_count = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.IntegerField)
+    def get_comments_count(self, obj):
+        return obj.comments.count()
+
+    @extend_schema_field(serializers.IntegerField)
+    def get_claps_count(self, obj):
+        total_claps = obj.claps.aggregate(total_claps=Sum('count'))['total_claps']
+        return total_claps if total_claps else 0
 
     class Meta:
         model = Article

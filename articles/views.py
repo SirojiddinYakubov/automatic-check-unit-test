@@ -1,13 +1,13 @@
-from rest_framework import permissions, status, viewsets
+from django.shortcuts import get_object_or_404
+from rest_framework import permissions, status, viewsets, parsers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from .models import Topic, Article, TopicFollow
+from .models import Topic, Article, TopicFollow, ArticleStatus
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
-    ArticleDeleteSerializer, ArticleUpdateSerializer,
-    ArticleDetailSerializer,
+    ArticleDeleteSerializer, ArticleDetailSerializer,
     TopicSerializer, TopicFollowSerializer,)
 from users.serializers import ValidationErrorSerializer
 from django_filters.rest_framework import DjangoFilterBackend
@@ -32,12 +32,12 @@ User = get_user_model()
     ),
     update=extend_schema(
         summary="Update article",
-        request=ArticleUpdateSerializer,
+        request=ArticleCreateSerializer,
         responses={200: ArticleListSerializer(many=True)}
     ),
     partial_update=extend_schema(
         summary="Partial update article",
-        request=ArticleUpdateSerializer,
+        request=ArticleCreateSerializer,
         responses={200: ArticleListSerializer(many=True)}
     ),
     destroy=extend_schema(
@@ -49,32 +49,29 @@ class ArticlesView(viewsets.ModelViewSet):
     serializer_class = ArticleListSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = ArticleFilter
-    queryset = Article.objects.filter(status="publish")
+    queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
     filter_backends = [DjangoFilterBackend]
+    parser_classes = [parsers.MultiPartParser]
 
     def get_serializer_class(self):
-        if self.action == 'create':
+        if self.action in ['create', 'update', 'partial_update']:
             return ArticleCreateSerializer
         if self.action == 'list':
             return ArticleListSerializer
         if self.action == 'retrieve':
             return ArticleDetailSerializer
-        if self.action == 'update':
-            return ArticleUpdateSerializer
-        if self.action == 'partial_update':
-            return ArticleUpdateSerializer
         if self.action == 'destroy':
             return ArticleDeleteSerializer
 
 
 @extend_schema_view(
     create=extend_schema(
-        summary="Create an topic",
+        summary="Create a topic",
         request=TopicSerializer,
         responses={200: TopicSerializer}
     ),
     list=extend_schema(
-        summary="List topices",
+        summary="List topics",
         responses={200: TopicSerializer}
     ),
     retrieve=extend_schema(
@@ -127,21 +124,14 @@ class TopicFollowView(APIView):
             user = request.user
             topic_id = serializer.validated_data['topic_id']
 
-            try:
-                topic = Topic.objects.get(id=topic_id, is_active=True)
-            except Topic.DoesNotExist:
-                return Response({"detail": "Topic does not exist."}, status=status.HTTP_404_NOT_FOUND)
+            topic = get_object_or_404(Topic, id=topic_id, is_active=True)
 
-            if topic:
-                if not TopicFollow.objects.filter(user=user, topic=topic).exists():
-                    TopicFollow.objects.create(user=user, topic=topic)
-                    return Response({"detail": f"You are now following topic '{topic.name}'."},
-                                    status=status.HTTP_201_CREATED)
-                else:
-                    topic_follow = TopicFollow.objects.get(
-                        user=user, topic=topic)
-                    topic_follow.delete()
-                    return Response({"detail": f"You have unfollowed topic '{topic.name}'."},
-                                    status=status.HTTP_200_OK)
+            topic_follow, created = TopicFollow.objects.get_or_create(user=user, topic=topic)
+
+            if created:
+                return Response({"detail": f"You are now following topic '{topic.name}'."}, status=status.HTTP_201_CREATED)
+            else:
+                topic_follow.delete()
+                return Response({"detail": f"You have unfollowed topic '{topic.name}'."}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -5,11 +5,11 @@ from django.db.models import Count
 class ArticleFilter(django_filters.FilterSet):
     top = django_filters.NumberFilter(method='filter_by_top')
     topic = django_filters.NumberFilter(method='filter_by_topic')
-    recommend = django_filters.BooleanFilter(method='filter_by_recommend')
+    is_recommend = django_filters.BooleanFilter(method='filter_by_recommend')
 
     class Meta:
         model = Article
-        fields = ['top', 'recommend']
+        fields = ['top', 'is_recommend']
 
     def filter_by_top(self, queryset, name, value):
         if value:
@@ -30,11 +30,11 @@ class ArticleFilter(django_filters.FilterSet):
 
 class TopicFilter(django_filters.FilterSet):
     followed = django_filters.BooleanFilter(method='filter_by_followed')
-    recommend = django_filters.BooleanFilter(method='filter_by_recommend')
+    is_recommend = django_filters.BooleanFilter(method='filter_by_recommend')
 
     class Meta:
         model = Topic
-        fields = ['followed', 'recommend']
+        fields = ['followed', 'is_recommend']
 
     def filter_by_followed(self, queryset, name, value):
         queryset = Topic.objects.filter(topic_follows__user=self.request.user)

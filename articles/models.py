@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from ckeditor.fields import RichTextField
 from django.core import validators
 from django.db.models import Sum
+from django.db.models import UniqueConstraint
 
 User = get_user_model()
 
@@ -69,14 +70,6 @@ class Article(BaseModel):
     def claps_count(self):
         total_claps = self.claps.aggregate(total_claps=Sum('count'))['total_claps']
         return total_claps or 0
-
-    @property
-    def formatted_created_at(self):
-        return self.created_at.strftime("%b %d, %Y")
-
-    @property
-    def formatted_updated_at(self):
-        return self.updated_at.strftime("%b %d, %Y")
 
 
 class Comment(BaseModel):
@@ -222,7 +215,9 @@ class TopicFollow(BaseModel):
         verbose_name = "Topic Follow"
         verbose_name_plural = "Topic Follows"
         ordering = ['-created_at']
-        unique_together = ('user', 'topic')
+        constraints = [
+            UniqueConstraint(fields=['user', 'topic'], name='unique_user_topic')
+        ]
 
     def __str__(self):
         return f"{self.user.username} follows {self.topic.name}"

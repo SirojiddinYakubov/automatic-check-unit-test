@@ -16,7 +16,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class ClapSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = Clap
@@ -24,37 +24,51 @@ class ClapSerializer(serializers.ModelSerializer):
 
 
 class ArticleListSerializer(serializers.ModelSerializer):
-    author = UserSerializer()
-    topics = TopicSerializer(many=True)
+    author = UserSerializer(read_only=True)
+    topics = TopicSerializer(many=True, read_only=True)
 
     class Meta:
         model = Article
-        fields = ['id', 'author', 'title', 'summary', 'content', 'thumbnail', 'views_count',
-                  'formatted_created_at', 'formatted_updated_at', 'topics', 'comments_count', 'claps_count']
+        fields = ['id', 'author', 'title', 'summary', 'content', 'status', 'thumbnail', 'views_count',
+                  'created_at', 'updated_at', 'topics', 'comments_count', 'claps_count']
 
 
 class ArticleDetailSerializer(serializers.ModelSerializer):
-    author = UserSerializer()
+    author = UserSerializer(read_only=True)
     topics = TopicSerializer(many=True)
     comments = CommentSerializer(many=True)
     claps = ClapSerializer(many=True)
 
     class Meta:
         model = Article
-        fields = ['id', 'author', 'title', 'summary', 'content', 'thumbnail', 'views_count',
-                  'formatted_created_at', 'formatted_updated_at', 'topics', 'comments', 'claps']
+        fields = ['id', 'author', 'title', 'summary', 'content', 'status', 'thumbnail', 'views_count',
+                  'created_at', 'updated_at', 'topics', 'comments', 'claps']
 
 
 class ArticleCreateSerializer(serializers.ModelSerializer):
+    topic_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Topic.objects.filter(is_active=True), many=True, write_only=True, source='topics'
+    )
+
     class Meta:
         model = Article
-        fields = ['topics', 'title', 'summary', 'content', 'thumbnail']
+        fields = ['author', 'title', 'summary', 'content', 'status', 'thumbnail', 'topic_ids']
 
+    def create(self, validated_data):
+        topics = validated_data.pop('topics', [])
+        article = Article.objects.create(**validated_data)
+        article.topics.set(topics)
+        return article
 
-class ArticleUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Article
-        fields = ['topics', 'title', 'summary', 'content', 'thumbnail']
+    def update(self, instance, validated_data):
+        topics = validated_data.pop('topics', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if topics is not None:
+            instance.topics.set(topics)
+        instance.save()
+        return instance
+
 
 
 class ArticleDeleteSerializer(serializers.ModelSerializer):

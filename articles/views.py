@@ -4,11 +4,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from .models import Topic, Article, TopicFollow, ArticleStatus
+from .models import Topic, Article, TopicFollow, ArticleStatus, Comment
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
     ArticleDeleteSerializer, ArticleDetailSerializer,
-    TopicSerializer, TopicFollowSerializer,)
+    TopicSerializer, TopicFollowSerializer, CommentSerializer)
 from users.serializers import ValidationErrorSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ArticleFilter, TopicFilter
@@ -135,3 +135,42 @@ class TopicFollowView(APIView):
                 return Response({"detail": f"You have unfollowed topic '{topic.name}'."}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema_view(
+    create=extend_schema(
+        summary="Create a comment",
+        request=CommentSerializer,
+        responses={200: CommentSerializer}
+    ),
+    list=extend_schema(
+        summary="List comments",
+        responses={200: CommentSerializer}
+    ),
+    retrieve=extend_schema(
+        summary="comment detail",
+        request=CommentSerializer,
+        responses={200: CommentSerializer}
+    ),
+    update=extend_schema(
+        summary="Update comment",
+        request=CommentSerializer,
+        responses={200: CommentSerializer}
+    ),
+    partial_update=extend_schema(
+        summary="Partial update comment",
+        request=CommentSerializer,
+        responses={200: CommentSerializer}
+    ),
+    destroy=extend_schema(
+        summary="Delete comment",
+        request=CommentSerializer
+    )
+)
+class CommentCreateView(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

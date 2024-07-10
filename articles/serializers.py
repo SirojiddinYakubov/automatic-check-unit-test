@@ -10,6 +10,8 @@ class TopicSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    parent = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), required=False, allow_null=True)
+
     class Meta:
         model = Comment
         fields = ['article', 'user', 'parent', 'content']
@@ -36,7 +38,7 @@ class ArticleListSerializer(serializers.ModelSerializer):
 class ArticleDetailSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     topics = TopicSerializer(many=True)
-    comments = CommentSerializer(many=True)
+    comments = CommentSerializer(many=True, read_only=True)
     claps = ClapSerializer(many=True)
 
     class Meta:

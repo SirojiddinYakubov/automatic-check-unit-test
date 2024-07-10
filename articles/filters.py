@@ -9,7 +9,7 @@ class ArticleFilter(django_filters.FilterSet):
 
     class Meta:
         model = Article
-        fields = ['top', 'is_recommend']
+        fields = ['top', 'topic', 'is_recommend']
 
     def filter_by_top(self, queryset, name, value):
         if value:

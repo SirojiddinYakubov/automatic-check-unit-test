@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Topic, Article, Comment, Clap
+from .models import Topic, Article, Comment, Clap, Favorite
 from users.serializers import UserSerializer
 
 
@@ -10,7 +10,8 @@ class TopicSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    parent = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), required=False, allow_null=True)
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=Comment.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = Comment
@@ -54,7 +55,8 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Article
-        fields = ['author', 'title', 'summary', 'content', 'status', 'thumbnail', 'topic_ids']
+        fields = ['author', 'title', 'summary',
+                  'content', 'status', 'thumbnail', 'topic_ids']
 
     def create(self, validated_data):
         topics = validated_data.pop('topics', [])
@@ -72,7 +74,6 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
         return instance
 
 
-
 class ArticleDeleteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
@@ -81,3 +82,11 @@ class ArticleDeleteSerializer(serializers.ModelSerializer):
 
 class TopicFollowSerializer(serializers.Serializer):
     topic_id = serializers.IntegerField()
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    article = ArticleListSerializer()
+
+    class Meta:
+        model = Favorite
+        fields = ['user', 'article', 'created_at']

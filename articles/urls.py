@@ -11,4 +11,8 @@ urlpatterns = [
     path('', include(router.urls)),
     path('topics/follow/', views.TopicFollowView.as_view(), name='topic-follow'),
     path('search/', views.SearchView.as_view(), name='article-search'),
+    path('favorite/<int:pk>/', views.FavoriteArticleView.as_view(),
+         name='favorite-article'),
+    path('users/favorites/', views.UserFavoritesListView.as_view(),
+         name='user-favorites'),
 ]

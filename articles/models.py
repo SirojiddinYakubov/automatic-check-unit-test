@@ -41,7 +41,8 @@ class Topic(BaseModel):
 
 
 class Article(BaseModel):
-    author = models.ForeignKey(User, limit_choices_to={'is_active': True}, on_delete=models.CASCADE)
+    author = models.ForeignKey(User, limit_choices_to={
+                               'is_active': True}, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     summary = models.TextField()
     content = RichTextField()
@@ -50,7 +51,8 @@ class Article(BaseModel):
     status = models.CharField(
         max_length=50, choices=ArticleStatus.choices, default=ArticleStatus.DRAFT
     )
-    topics = models.ManyToManyField(Topic, limit_choices_to={'is_active': True}, related_name="articles")
+    topics = models.ManyToManyField(Topic, limit_choices_to={
+                                    'is_active': True}, related_name="articles")
     views_count = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -68,7 +70,8 @@ class Article(BaseModel):
 
     @property
     def claps_count(self):
-        total_claps = self.claps.aggregate(total_claps=Sum('count'))['total_claps']
+        total_claps = self.claps.aggregate(
+            total_claps=Sum('count'))['total_claps']
         return total_claps or 0
 
 
@@ -76,7 +79,8 @@ class Comment(BaseModel):
     article = models.ForeignKey(
         Article, on_delete=models.CASCADE, related_name="comments"
     )
-    user = models.ForeignKey(User, limit_choices_to={'is_active': True}, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, limit_choices_to={
+                             'is_active': True}, on_delete=models.CASCADE)
     parent = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies"
     )
@@ -216,7 +220,8 @@ class TopicFollow(BaseModel):
         verbose_name_plural = "Topic Follows"
         ordering = ['-created_at']
         constraints = [
-            UniqueConstraint(fields=['user', 'topic'], name='unique_user_topic')
+            UniqueConstraint(fields=['user', 'topic'],
+                             name='unique_user_topic')
         ]
 
     def __str__(self):

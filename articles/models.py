@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from ckeditor.fields import RichTextField
 from django.core import validators
+from django.db.models import UniqueConstraint
 
 User = get_user_model()
 
@@ -39,7 +40,8 @@ class Topic(BaseModel):
 
 
 class Article(BaseModel):
-    author = models.ForeignKey(User, limit_choices_to={'is_active': True}, on_delete=models.CASCADE)
+    author = models.ForeignKey(User, limit_choices_to={
+                               'is_active': True}, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     summary = models.TextField()
     content = RichTextField()
@@ -48,7 +50,8 @@ class Article(BaseModel):
     status = models.CharField(
         max_length=50, choices=ArticleStatus.choices, default=ArticleStatus.DRAFT
     )
-    topics = models.ManyToManyField(Topic, limit_choices_to={'is_active': True}, related_name="articles")
+    topics = models.ManyToManyField(Topic, limit_choices_to={
+                                    'is_active': True}, related_name="articles")
     views_count = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -65,7 +68,8 @@ class Comment(BaseModel):
     article = models.ForeignKey(
         Article, on_delete=models.CASCADE, related_name="comments"
     )
-    user = models.ForeignKey(User, limit_choices_to={'is_active': True}, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, limit_choices_to={
+                             'is_active': True}, on_delete=models.CASCADE)
     parent = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies"
     )
@@ -112,6 +116,9 @@ class Clap(BaseModel):
         verbose_name_plural = "Claps"
         ordering = ['-created_at']
 
+    def __str__(self):
+        return f"{self.user} - {self.count}"
+
 
 class Pin(BaseModel):
     user = models.ForeignKey(
@@ -149,7 +156,7 @@ class Recommendation(BaseModel):
         Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="more_recommended"
     )
     less = models.ForeignKey(
-        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="less_recommended"
+        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="less_recommended", null=True, blank=True
     )
 
     class Meta:
@@ -201,6 +208,13 @@ class TopicFollow(BaseModel):
         verbose_name = "Topic Follow"
         verbose_name_plural = "Topic Follows"
         ordering = ['-created_at']
+        constraints = [
+            UniqueConstraint(fields=['user', 'topic'],
+                             name='unique_user_topic')
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} follows {self.topic.name}"
 
 
 class Report(BaseModel):

@@ -441,6 +441,15 @@ class UnfollowView(generics.GenericAPIView):
             return Response({"detail": _("Siz bu foydalanuvchini kuzatmayapsiz.")}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        summary="Followers List",
+        request=None,
+        responses={
+            200: UserSerializer,
+        }
+    )
+)
 class FollowersListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserSerializer
@@ -450,6 +459,15 @@ class FollowersListView(generics.ListAPIView):
         return User.objects.filter(following__followee_id=user_id, is_active=True)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        summary="Following List",
+        request=None,
+        responses={
+            200: UserSerializer
+        }
+    )
+)
 class FollowingListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserSerializer

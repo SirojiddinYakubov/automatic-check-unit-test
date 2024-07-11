@@ -1,56 +1,83 @@
 name: Unittest Check CI/CD
 on:
   workflow_dispatch:
+    inputs:
+      tests_path:
+        description: 'Tests path'
+        required: false
+        default: 'tests'
   push:
     branches: [ "unittest" ]
 
 jobs:
   deploy:
-    name: check code
+    name: Check CI/CD
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
 
     steps:
-      - name: Check out the repo
+      - name: Checkout original repository
         uses: actions/checkout@v3
+        with:
+          repository: sirojiddinyakubov/medium-clone-backend
+          path: original-repo
+          ref: unittest
+
+      - name: Checkout forked repository
+        uses: actions/checkout@v3
+        with:
+          path: forked-repo
+          ref: unittest
+
+      - name: Move tests folder from original to forked
+        run: |
+          rm -rf forked-repo/tests
+          mv original-repo/tests forked-repo/
+          rm -rf original-repo
+        continue-on-error: true
 
       - name: Create .env file
+        working-directory: forked-repo
         run: cp .env.example .env
+        continue-on-error: true
 
       - name: Run app
+        working-directory: forked-repo
         run: |
           docker compose up -d --build
           sleep 5s
           docker ps -a
           sleep 5s
           docker logs medium_app
+        continue-on-error: true
 
       - name: Curl
         run: |
           sleep 5s
           curl -v http://127.0.0.1:8000/health/
+        continue-on-error: true
 
-      - name: Download test zip File
-        run: |
-          curl -L "${{ secrets.CHECK_FILE }}" > tests.zip
+      #      - name: Download test zip File
+      #        run: |
+      #          curl -L "${{ secrets.CHECK_FILE }}" > tests.zip
+      #        continue-on-error: true
+      #
+      #      - name: Unzip check test zip folder
+      #        run: |
+      #          unzip tests.zip
 
-      - name: Unzip check test zip folder
-        run: |
-          unzip tests.zip
 
-#      - name: Test database connection
-#        run: |
-#          sudo apt-get install -y postgresql-client redis-tools
-#          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "CREATE TABLE student(id SERIAL PRIMARY KEY, firstName VARCHAR(40) NOT NULL, lastName VARCHAR(40) NOT NULL, age INT, address VARCHAR(80), email VARCHAR(40))"
-#          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "INSERT INTO student(firstname, lastname, age, address, email) VALUES('test', 'test2', 12, 'test3', 'admin@admin.com') RETURNING *"
-#          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "SELECT * FROM student"
-#        continue-on-error: true
+      #      - name: Test database connection
+      #        run: |
+      #          sudo apt-get install -y postgresql-client redis-tools
+      #          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "CREATE TABLE student(id SERIAL PRIMARY KEY, firstName VARCHAR(40) NOT NULL, lastName VARCHAR(40) NOT NULL, age INT, address VARCHAR(80), email VARCHAR(40))"
+      #          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "INSERT INTO student(firstname, lastname, age, address, email) VALUES('test', 'test2', 12, 'test3', 'admin@admin.com') RETURNING *"
+      #          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "SELECT * FROM student"
+      #        continue-on-error: true
 
       - name: Run Tests
-        run: docker compose exec medium_app pytest -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2
+        working-directory: forked-repo
+        run: docker compose exec medium_app pytest ${{ github.event.inputs.tests_path }} --cache-clear -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2
         continue-on-error: true
 
       - name: Upload artifact
@@ -58,6 +85,7 @@ jobs:
         with:
           name: unittest-checker-artifact
           path: ./reports/unittest-checker-report.json
+        continue-on-error: true
 
       - name: Send run_id
         run: |

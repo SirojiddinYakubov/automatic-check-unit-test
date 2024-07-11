@@ -105,6 +105,6 @@ environment.json
 collection.json
 .env
 reports
-tests/.pytest_cache
+tests2/.pytest_cache
 .pytest_cache
 logs

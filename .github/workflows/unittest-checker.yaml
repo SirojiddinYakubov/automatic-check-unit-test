@@ -10,9 +10,33 @@ on:
     branches: [ "unittest" ]
 
 jobs:
+  compare-tests-folder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout original repository
+        uses: actions/checkout@v3
+        with:
+          repository: sirojiddinyakubov/medium-clone-backend
+          path: original-repo
+          branch: unittest
+
+      - name: Checkout forked repository
+        uses: actions/checkout@v3
+        with:
+          path: forked-repo
+          branch: unittest
+
+      - name: Install diffutils
+        run: sudo apt-get install -y diffutils
+
+      - name: Compare tests folder
+        run: diff -r original-repo/tests forked-repo/tests
+
   deploy:
     name: check code
     runs-on: ubuntu-latest
+    needs:
+      - compare-tests-folder
     timeout-minutes: 10
     defaults:
       run:
@@ -46,13 +70,13 @@ jobs:
         run: |
           unzip tests.zip
 
-#      - name: Test database connection
-#        run: |
-#          sudo apt-get install -y postgresql-client redis-tools
-#          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "CREATE TABLE student(id SERIAL PRIMARY KEY, firstName VARCHAR(40) NOT NULL, lastName VARCHAR(40) NOT NULL, age INT, address VARCHAR(80), email VARCHAR(40))"
-#          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "INSERT INTO student(firstname, lastname, age, address, email) VALUES('test', 'test2', 12, 'test3', 'admin@admin.com') RETURNING *"
-#          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "SELECT * FROM student"
-#        continue-on-error: true
+      #      - name: Test database connection
+      #        run: |
+      #          sudo apt-get install -y postgresql-client redis-tools
+      #          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "CREATE TABLE student(id SERIAL PRIMARY KEY, firstName VARCHAR(40) NOT NULL, lastName VARCHAR(40) NOT NULL, age INT, address VARCHAR(80), email VARCHAR(40))"
+      #          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "INSERT INTO student(firstname, lastname, age, address, email) VALUES('test', 'test2', 12, 'test3', 'admin@admin.com') RETURNING *"
+      #          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "SELECT * FROM student"
+      #        continue-on-error: true
 
       - name: Run Tests
         run: docker compose exec medium_app pytest ${{ github.event.inputs.tests_path }} -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2

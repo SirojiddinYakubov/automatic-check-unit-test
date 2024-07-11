@@ -16,6 +16,10 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - uses: MyAlbum/purge-cache@v1
+        with:
+          max-age: 1
+
       - name: Checkout original repository
         uses: actions/checkout@v3
         with:
@@ -55,14 +59,14 @@ jobs:
           curl -v http://127.0.0.1:8000/health/
         continue-on-error: true
 
-#      - name: Download test zip File
-#        run: |
-#          curl -L "${{ secrets.CHECK_FILE }}" > tests.zip
-#        continue-on-error: true
-#
-#      - name: Unzip check test zip folder
-#        run: |
-#          unzip tests.zip
+      #      - name: Download test zip File
+      #        run: |
+      #          curl -L "${{ secrets.CHECK_FILE }}" > tests.zip
+      #        continue-on-error: true
+      #
+      #      - name: Unzip check test zip folder
+      #        run: |
+      #          unzip tests.zip
 
 
       #      - name: Test database connection

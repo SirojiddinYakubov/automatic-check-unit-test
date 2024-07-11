@@ -18,5 +18,7 @@ urlpatterns = [
     path('articles/<int:article_id>/clap/',
          views.ClapView.as_view(), name='article-clap'),
     path('articles/<int:article_id>/reads/',
-         views.ArticleReadView.as_view(), name='article-reads')
+         views.ArticleReadView.as_view(), name='article-reads'),
+    path('popular-authors/', views.PopularAuthorsView.as_view(),
+         name='popular-authors'),
 ]

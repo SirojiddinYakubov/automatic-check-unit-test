@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status, viewsets, parsers, generics
 from rest_framework.response import Response
@@ -11,7 +12,7 @@ from .serializers import (
     ArticleDeleteSerializer, ArticleDetailSerializer,
     TopicSerializer, TopicFollowSerializer, CommentSerializer,
     FavoriteSerializer, ClapSerializer, DefaultResponseSerializer)
-from users.serializers import ValidationErrorSerializer
+from users.serializers import ValidationErrorSerializer, UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ArticleFilter, TopicFilter, SearchFilter
 
@@ -322,3 +323,26 @@ class ArticleReadView(APIView):
             return Response({"detail": _("Maqolani o'qish soni ortdi.")}, status=status.HTTP_200_OK)
         except Article.DoesNotExist:
             return Response({"detail": _("Maqola mavjud emas.")}, status=status.HTTP_404_NOT_FOUND)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Popular Authors",
+        request=None,
+        responses={
+            200: UserSerializer,
+            401: ValidationErrorSerializer
+        }
+    )
+)
+class PopularAuthorsView(generics.ListAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return User.objects.filter(
+            is_active=True,
+            article__status=ArticleStatus.PUBLISH
+        ).annotate(
+            total_reads_count=Sum('article__reads_count')
+        ).order_by('-total_reads_count')[:5]

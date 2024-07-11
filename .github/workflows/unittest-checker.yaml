@@ -10,41 +10,31 @@ on:
     branches: [ "unittest" ]
 
 jobs:
-  compare-tests-folder:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout original repository
-        uses: actions/checkout@v3
-        with:
-          repository: sirojiddinyakubov/medium-clone-backend
-          path: original-repo
-          branch: unittest
-
-      - name: Checkout forked repository
-        uses: actions/checkout@v3
-        with:
-          path: forked-repo
-          branch: unittest
-
-      - name: Install diffutils
-        run: sudo apt-get install -y diffutils
-
-      - name: Compare tests folder
-        run: diff -r original-repo/tests forked-repo/tests
-
   deploy:
     name: check code
     runs-on: ubuntu-latest
-    needs:
-      - compare-tests-folder
     timeout-minutes: 10
     defaults:
       run:
         working-directory: ${{ github.workspace }}
 
     steps:
-      - name: Check out the repo
+      - name: Checkout original repository
         uses: actions/checkout@v3
+        with:
+          repository: sirojiddinyakubov/medium-clone-backend
+          path: original-repo
+          ref: unittest
+
+      - name: Checkout forked repository
+        uses: actions/checkout@v3
+        with:
+          path: forked-repo
+          ref: unittest
+
+      - name: Move tests folder from original to forked
+        run: |
+          mv original-repo/tests forked-repo/tests
 
       - name: Create .env file
         run: cp .env.example .env

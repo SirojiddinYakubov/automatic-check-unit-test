@@ -53,6 +53,7 @@ class Article(BaseModel):
     topics = models.ManyToManyField(Topic, limit_choices_to={
                                     'is_active': True}, related_name="articles")
     views_count = models.PositiveIntegerField(default=0)
+    reads_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = "article"

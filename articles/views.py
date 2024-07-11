@@ -66,6 +66,13 @@ class ArticlesView(viewsets.ModelViewSet):
         if self.action == 'destroy':
             return ArticleDeleteSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.views_count += 1
+        instance.save(update_fields=['views_count'])
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
 
 @extend_schema_view(
     create=extend_schema(
@@ -291,3 +298,27 @@ class ClapView(generics.GenericAPIView):
             return Response({"detail": _("Qarsaklar bekor qilindi.")}, status=status.HTTP_200_OK)
         except Clap.DoesNotExist:
             return Response({"detail": _("Bekor qilish uchun qarsaklar yo'q.")}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Article Reads",
+        request=None,
+        responses={
+            202: DefaultResponseSerializer,
+            404: ValidationErrorSerializer,
+            401: ValidationErrorSerializer
+        }
+    )
+)
+class ArticleReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, article_id):
+        try:
+            instance = Article.objects.get(id=article_id)
+            instance.reads_count += 1
+            instance.save(update_fields=['reads_count'])
+            return Response({"detail": _("Maqolani o'qish soni ortdi.")}, status=status.HTTP_200_OK)
+        except Article.DoesNotExist:
+            return Response({"detail": _("Maqola mavjud emas.")}, status=status.HTTP_404_NOT_FOUND)

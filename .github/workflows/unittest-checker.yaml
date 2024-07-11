@@ -32,6 +32,7 @@ jobs:
       - name: Move tests folder from original to forked
         run: |
           mv original-repo/tests forked-repo/tests
+          rm -rf original-repo
         continue-on-error: true
 
       - name: Create .env file

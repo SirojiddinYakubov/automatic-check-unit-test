@@ -40,7 +40,8 @@ class ArticleListSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.IntegerField)
     def get_claps_count(self, obj):
-        total_claps = obj.claps.aggregate(total_claps=Sum('count'))['total_claps']
+        total_claps = obj.claps.aggregate(
+            total_claps=Sum('count'))['total_claps']
         return total_claps if total_claps else 0
 
     class Meta:
@@ -103,3 +104,7 @@ class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Favorite
         fields = ['user', 'article', 'created_at']
+
+
+class DefaultResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()

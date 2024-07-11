@@ -15,4 +15,6 @@ urlpatterns = [
          name='favorite-article'),
     path('users/favorites/', views.UserFavoritesListView.as_view(),
          name='user-favorites'),
+    path('articles/<int:article_id>/clap/',
+         views.ClapView.as_view(), name='article-clap'),
 ]

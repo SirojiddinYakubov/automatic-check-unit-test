@@ -3,13 +3,14 @@ from rest_framework import permissions, status, viewsets, parsers, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from .models import Topic, Article, TopicFollow, ArticleStatus, Comment, Favorite
+from .models import Topic, Article, TopicFollow, ArticleStatus, Comment, Favorite, Clap
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
     ArticleDeleteSerializer, ArticleDetailSerializer,
     TopicSerializer, TopicFollowSerializer, CommentSerializer,
-    FavoriteSerializer)
+    FavoriteSerializer, ClapSerializer, DefaultResponseSerializer)
 from users.serializers import ValidationErrorSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ArticleFilter, TopicFilter, SearchFilter
@@ -109,8 +110,8 @@ class TopicsView(viewsets.ModelViewSet):
         summary="Follow or unfollow a topic",
         request=TopicFollowSerializer,
         responses={
-            201: {"detail": "You are now following topic."},
-            200: {"detail": "You have unfollowed topic."},
+            201: DefaultResponseSerializer,
+            200: DefaultResponseSerializer,
             400: ValidationErrorSerializer,
             404: ValidationErrorSerializer
         }
@@ -132,10 +133,10 @@ class TopicFollowView(APIView):
                 user=user, topic=topic)
 
             if created:
-                return Response({"detail": f"You are now following topic '{topic.name}'."}, status=status.HTTP_201_CREATED)
+                return Response({"detail": _("Siz '{topic_name}' mavzusini kuzatyapsiz.".format(topic_name=topic.name))}, status=status.HTTP_201_CREATED)
             else:
                 topic_follow.delete()
-                return Response({"detail": f"You have unfollowed topic '{topic.name}'."}, status=status.HTTP_200_OK)
+                return Response({"detail": _("Siz '{topic_name}' mavzusini kuzatishni bekor qildingiz.".format(topic_name=topic.name))}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -196,7 +197,7 @@ class SearchView(generics.ListAPIView):
     post=extend_schema(
         summary="Add Article To Favorite",
         request=ArticleListSerializer,
-        responses={200: ArticleListSerializer}
+        responses={200: DefaultResponseSerializer}
     ),
     delete=extend_schema(
         summary="Delete Favorite",
@@ -212,22 +213,22 @@ class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
         favorite, created = Favorite.objects.get_or_create(
             user=request.user, article=article)
         if created:
-            return Response({'detail': 'Article added to favorites'}, status=status.HTTP_201_CREATED)
+            return Response({'detail': _("Maqola sevimlilarga qo'shildi.")}, status=status.HTTP_201_CREATED)
         else:
-            return Response({'detail': 'Article is already in favorites'}, status=status.HTTP_200_OK)
+            return Response({'detail': _("Maqola allaqachon sevimlilar ro'yxatiga kiritilgan.")}, status=status.HTTP_200_OK)
 
     def delete(self, request, *args, **kwargs):
         article = self.get_object()
         favorite = get_object_or_404(
             Favorite, user=request.user, article=article)
         favorite.delete()
-        return Response({'detail': 'Article removed from favorites'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': _("Maqola sevimlilardan olib tashlandi.")}, status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema_view(
     get=extend_schema(
         summary="User Favorites",
-        request=FavoriteSerializer,
+        request=None,
         responses={200: ArticleListSerializer}
     ))
 class UserFavoritesListView(generics.ListAPIView):
@@ -237,3 +238,56 @@ class UserFavoritesListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         return Favorite.objects.filter(user=user)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Clap To Article",
+        request=None,
+        responses={
+            201: ClapSerializer,
+            401: ValidationErrorSerializer
+        }
+    ),
+    delete=extend_schema(
+        summary="Undo Claps",
+        request=None,
+        responses={
+            200: DefaultResponseSerializer,
+            400: ValidationErrorSerializer,
+            404: ValidationErrorSerializer,
+            401: ValidationErrorSerializer
+        }
+    )
+)
+class ClapView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ClapSerializer
+
+    def post(self, request, article_id):
+        user = request.user
+        try:
+            article = Article.objects.get(id=article_id)
+        except Article.DoesNotExist:
+            return Response({"detail": _("Maqola mavjud emas.")}, status=status.HTTP_404_NOT_FOUND)
+
+        clap, created = Clap.objects.get_or_create(user=user, article=article)
+        clap.count = min(clap.count + 1, 50)
+        clap.save()
+
+        response_serializer = self.serializer_class(clap)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, article_id):
+        user = request.user
+        try:
+            article = Article.objects.get(id=article_id)
+        except Article.DoesNotExist:
+            return Response({"detail": _("Maqola mavjud emas.")}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            clap = Clap.objects.get(user=user, article=article)
+            clap.delete()
+            return Response({"detail": _("Qarsaklar bekor qilindi.")}, status=status.HTTP_200_OK)
+        except Clap.DoesNotExist:
+            return Response({"detail": _("Bekor qilish uchun qarsaklar yo'q.")}, status=status.HTTP_400_BAD_REQUEST)

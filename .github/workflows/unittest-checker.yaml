@@ -11,7 +11,7 @@ on:
 
 jobs:
   deploy:
-    name: check code
+    name: Check CI/CD
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

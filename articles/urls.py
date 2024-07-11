@@ -21,4 +21,13 @@ urlpatterns = [
          views.ArticleReadView.as_view(), name='article-reads'),
     path('popular-authors/', views.PopularAuthorsView.as_view(),
          name='popular-authors'),
+    path('users/reading-hestory/',
+         views.ReadingHistoryView.as_view(), name='reading-hestory'),
+    path('author/follow/', views.FollowView.as_view(), name='follow'),
+    path('author/unfollow/<int:followee_id>/',
+         views.UnfollowView.as_view(), name='unfollow'),
+    path('users/<int:user_id>/followers/',
+         views.FollowersListView.as_view(), name='followers'),
+    path('users/<int:user_id>/following/',
+         views.FollowingListView.as_view(), name='following'),
 ]

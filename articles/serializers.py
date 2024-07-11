@@ -1,8 +1,11 @@
 from rest_framework import serializers
-from .models import Topic, Article, Comment, Clap, Favorite
+from .models import Topic, Article, Comment, Clap, Favorite, ReadingHistory, Follow
 from users.serializers import UserSerializer
 from drf_spectacular.utils import extend_schema_field
 from django.db.models import Sum
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class TopicSerializer(serializers.ModelSerializer):
@@ -108,3 +111,24 @@ class FavoriteSerializer(serializers.ModelSerializer):
 
 class DefaultResponseSerializer(serializers.Serializer):
     detail = serializers.CharField()
+
+
+class ReadingHistorySerializer(serializers.ModelSerializer):
+    article = ArticleListSerializer(read_only=True)
+
+    class Meta:
+        model = ReadingHistory
+        fields = ['id', 'article', 'created_at']
+
+
+class FollowRequestSerializer(serializers.Serializer):
+    followee_id = serializers.IntegerField()
+
+
+class FollowResponseSerializer(serializers.ModelSerializer):
+    follower = UserSerializer
+    followee = UserSerializer
+
+    class Meta:
+        model = Follow
+        fields = ['follower', 'followee', 'created_at']

@@ -6,12 +6,15 @@ from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from .models import Topic, Article, TopicFollow, ArticleStatus, Comment, Favorite, Clap
+from .models import (
+    Topic, Article, TopicFollow, ArticleStatus,
+    Comment, Favorite, Clap, ReadingHistory, Follow)
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
     ArticleDeleteSerializer, ArticleDetailSerializer,
     TopicSerializer, TopicFollowSerializer, CommentSerializer,
-    FavoriteSerializer, ClapSerializer, DefaultResponseSerializer)
+    FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
+    ReadingHistorySerializer, FollowRequestSerializer, FollowResponseSerializer)
 from users.serializers import ValidationErrorSerializer, UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ArticleFilter, TopicFilter, SearchFilter
@@ -71,6 +74,10 @@ class ArticlesView(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.views_count += 1
         instance.save(update_fields=['views_count'])
+
+        ReadingHistory.objects.get_or_create(
+            user=request.user, article=instance)
+
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
@@ -346,3 +353,107 @@ class PopularAuthorsView(generics.ListAPIView):
         ).annotate(
             total_reads_count=Sum('article__reads_count')
         ).order_by('-total_reads_count')[:5]
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Reading History",
+        request=None,
+        responses={
+            200: ArticleListSerializer,
+            401: ValidationErrorSerializer
+        }
+    )
+)
+class ReadingHistoryView(generics.ListAPIView):
+    serializer_class = ReadingHistorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ReadingHistory.objects.filter(user=self.request.user).order_by('-created_at')
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Follow an Author",
+        request=FollowRequestSerializer,
+        responses={201: FollowResponseSerializer}
+    )
+)
+class FollowView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FollowRequestSerializer
+
+    def get_queryset(self):
+        return User.objects.filter(is_active=True)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            follower = request.user
+            followee_id = serializer.validated_data['followee_id']
+
+            try:
+                followee = User.objects.get(id=followee_id, is_active=True)
+            except User.DoesNotExist:
+                return Response({"detail": _("Foydalanuvchi mavjud emas.")}, status=status.HTTP_404_NOT_FOUND)
+
+            if Follow.objects.filter(follower=follower, followee=followee).exists():
+                return Response({"detail": _("Siz allaqachon bu foydalanuvchini kuzatib borasiz.")}, status=status.HTTP_400_BAD_REQUEST)
+
+            follow = Follow.objects.create(
+                follower=follower, followee=followee)
+            response_serializer = FollowResponseSerializer(follow)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema_view(
+    delete=extend_schema(
+        summary="Unfollow an Author",
+        responses={
+            204: None,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer
+        }
+    )
+)
+class UnfollowView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return User.objects.filter(is_active=True)
+
+    def get_object(self):
+        return generics.get_object_or_404(self.get_queryset(), id=self.kwargs['followee_id'])
+
+    def delete(self, request, followee_id, *args, **kwargs):
+        follower = request.user
+
+        followee = self.get_object()
+
+        try:
+            follow = Follow.objects.get(follower=follower, followee=followee)
+            follow.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Follow.DoesNotExist:
+            return Response({"detail": _("Siz bu foydalanuvchini kuzatmayapsiz.")}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FollowersListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return User.objects.filter(following__followee_id=user_id, is_active=True)
+
+
+class FollowingListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return User.objects.filter(followers__follower_id=user_id, is_active=True)

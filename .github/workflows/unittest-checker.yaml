@@ -29,36 +29,41 @@ jobs:
           path: forked-repo
           ref: unittest
 
-      - run: ls -R .
-
       - name: Move tests folder from original to forked
         run: |
           mv original-repo/tests forked-repo/tests
+        continue-on-error: true
 
       - name: Create .env file
         working-directory: forked-repo
         run: cp .env.example .env
+        continue-on-error: true
 
       - name: Run app
+        working-directory: forked-repo
         run: |
           docker compose up -d --build
           sleep 5s
           docker ps -a
           sleep 5s
           docker logs medium_app
+        continue-on-error: true
 
       - name: Curl
         run: |
           sleep 5s
           curl -v http://127.0.0.1:8000/health/
+        continue-on-error: true
 
-      - name: Download test zip File
-        run: |
-          curl -L "${{ secrets.CHECK_FILE }}" > tests.zip
+#      - name: Download test zip File
+#        run: |
+#          curl -L "${{ secrets.CHECK_FILE }}" > tests.zip
+#        continue-on-error: true
+#
+#      - name: Unzip check test zip folder
+#        run: |
+#          unzip tests.zip
 
-      - name: Unzip check test zip folder
-        run: |
-          unzip tests.zip
 
       #      - name: Test database connection
       #        run: |
@@ -69,6 +74,7 @@ jobs:
       #        continue-on-error: true
 
       - name: Run Tests
+        working-directory: forked-repo
         run: docker compose exec medium_app pytest ${{ github.event.inputs.tests_path }} -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2
         continue-on-error: true
 
@@ -77,6 +83,7 @@ jobs:
         with:
           name: unittest-checker-artifact
           path: ./reports/unittest-checker-report.json
+        continue-on-error: true
 
       - name: Send run_id
         run: |

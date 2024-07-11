@@ -79,7 +79,7 @@ jobs:
 
       - name: Run Tests
         working-directory: forked-repo
-        run: docker compose exec medium_app pytest ${{ github.event.inputs.tests_path }} -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2
+        run: docker compose exec medium_app pytest ${{ github.event.inputs.tests_path }} --cache-clear -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2
         continue-on-error: true
 
       - name: Upload artifact

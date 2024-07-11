@@ -16,10 +16,6 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: MyAlbum/purge-cache@v1
-        with:
-          max-age: 1
-
       - name: Checkout original repository
         uses: actions/checkout@v3
         with:
@@ -33,10 +29,10 @@ jobs:
           path: forked-repo
           ref: unittest
 
-      - name: Move tests folder from original to forked
-        run: |
-          mv original-repo/tests forked-repo/tests
-        continue-on-error: true
+#      - name: Move tests folder from original to forked
+#        run: |
+#          mv original-repo/tests forked-repo/tests
+#        continue-on-error: true
 
       - name: Create .env file
         working-directory: forked-repo

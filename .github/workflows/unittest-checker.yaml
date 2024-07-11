@@ -29,12 +29,12 @@ jobs:
       - name: Checkout forked repository
         uses: actions/checkout@v3
         with:
-          path: forked-repo
+          path: .
           ref: unittest
 
       - name: Move tests folder from original to forked
         run: |
-          mv original-repo/tests forked-repo/tests
+          mv original-repo/tests ./tests
 
       - name: Create .env file
         run: cp .env.example .env

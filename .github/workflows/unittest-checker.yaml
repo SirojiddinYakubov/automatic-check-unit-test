@@ -14,9 +14,9 @@ jobs:
     name: check code
     runs-on: ubuntu-latest
     timeout-minutes: 10
-#    defaults:
-#      run:
-#        working-directory: ${{ github.workspace }}
+    defaults:
+      run:
+        working-directory: forked-repo
 
     steps:
       - name: Checkout original repository
@@ -29,16 +29,14 @@ jobs:
       - name: Checkout forked repository
         uses: actions/checkout@v3
         with:
-          path: .
+          path: forked-repo
           ref: unittest
 
-      - name: List files in original repository
-        run: ls -R
+      - uses: ls -R .
 
       - name: Move tests folder from original to forked
         run: |
-          mv original-repo/tests tests
-      
+          mv original-repo/tests forked-repo/tests
 
       - name: Create .env file
         run: cp .env.example .env

@@ -4,7 +4,7 @@ from pytest_factoryboy import register
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from tests2.factories.user_factory import UserFactory
+from tests.factories.user_factory import UserFactory
 
 register(UserFactory)
 

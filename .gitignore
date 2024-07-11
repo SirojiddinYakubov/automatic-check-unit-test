@@ -84,6 +84,7 @@ target/
 *.pot
 *.pyc
 __pycache__/
+*/__pycache__/
 local_settings.py
 .env.local
 *.sqlite3
@@ -105,6 +106,6 @@ environment.json
 collection.json
 .env
 reports
-tests2/.pytest_cache
+tests/.pytest_cache
 .pytest_cache
 logs

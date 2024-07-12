@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import Topic, Article, Comment, Clap, Favorite, ReadingHistory, Follow, Recommendation
+from .models import (
+    Topic, Article, Comment, Clap, Favorite, ReadingHistory,
+    Follow, Recommendation, Pin)
 from users.serializers import UserSerializer
 from drf_spectacular.utils import extend_schema_field
 from django.db.models import Sum
@@ -73,7 +75,7 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
         fields = ['author', 'title', 'summary',
-                  'content', 'status', 'thumbnail', 'topic_ids']
+                  'content', 'thumbnail', 'topic_ids']
 
     def create(self, validated_data):
         topics = validated_data.pop('topics', [])
@@ -143,3 +145,13 @@ class RecommendationResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recommendation
         fields = ['user', 'more', 'less', 'created_at']
+
+
+class PinRequestSerializer(serializers.Serializer):
+    article_id = serializers.IntegerField()
+
+
+class PinResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pin
+        fields = ['id', 'user', 'article', 'created_at']

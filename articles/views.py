@@ -8,17 +8,18 @@ from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from .models import (
     Topic, Article, TopicFollow, ArticleStatus,
-    Comment, Favorite, Clap, ReadingHistory, Follow, Recommendation)
+    Comment, Favorite, Clap, ReadingHistory, Follow,
+    Recommendation)
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
-    ArticleDeleteSerializer, ArticleDetailSerializer,
-    TopicSerializer, TopicFollowSerializer, CommentSerializer,
+    ArticleDetailSerializer,
+    TopicFollowSerializer, CommentSerializer,
     FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
     ReadingHistorySerializer, FollowRequestSerializer, FollowResponseSerializer,
     RecommendationRequestSerializer, RecommendationResponseSerializer)
 from users.serializers import ValidationErrorSerializer, UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
-from .filters import ArticleFilter, TopicFilter, SearchFilter
+from .filters import ArticleFilter, SearchFilter
 
 User = get_user_model()
 
@@ -27,7 +28,7 @@ User = get_user_model()
     create=extend_schema(
         summary="Create an article",
         request=ArticleCreateSerializer,
-        responses={200: ArticleListSerializer, 401: ValidationErrorSerializer}
+        responses={201: ArticleListSerializer, 400: "Bad Request"}
     ),
     list=extend_schema(
         operation_id="list_articles",
@@ -35,22 +36,17 @@ User = get_user_model()
         responses={200: ArticleListSerializer(many=True)}
     ),
     retrieve=extend_schema(
-        summary="Article detail",
-        responses={200: ArticleDetailSerializer(many=True)}
-    ),
-    update=extend_schema(
-        summary="Update article",
-        request=ArticleCreateSerializer,
-        responses={200: ArticleListSerializer(many=True)}
+        summary="Retrieve an article",
+        responses={200: ArticleDetailSerializer}
     ),
     partial_update=extend_schema(
         summary="Partial update article",
         request=ArticleCreateSerializer,
-        responses={200: ArticleListSerializer(many=True)}
+        responses={200: ArticleListSerializer}
     ),
     destroy=extend_schema(
-        summary="Delete article",
-        request=ArticleDeleteSerializer
+        summary="Delete an article",
+        responses={204: "No Content"}
     )
 )
 class ArticlesView(viewsets.ModelViewSet):
@@ -60,16 +56,7 @@ class ArticlesView(viewsets.ModelViewSet):
     queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
     filter_backends = [DjangoFilterBackend]
     parser_classes = [parsers.MultiPartParser]
-
-    def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
-            return ArticleCreateSerializer
-        if self.action == 'list':
-            return ArticleListSerializer
-        if self.action == 'retrieve':
-            return ArticleDetailSerializer
-        if self.action == 'destroy':
-            return ArticleDeleteSerializer
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -77,48 +64,11 @@ class ArticlesView(viewsets.ModelViewSet):
         instance.save(update_fields=['views_count'])
 
         ReadingHistory.objects.get_or_create(
-            user=request.user, article=instance)
+            user=request.user, article=instance
+        )
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
-
-
-@extend_schema_view(
-    create=extend_schema(
-        summary="Create a topic",
-        request=TopicSerializer,
-        responses={200: TopicSerializer}
-    ),
-    list=extend_schema(
-        summary="List topics",
-        responses={200: TopicSerializer}
-    ),
-    retrieve=extend_schema(
-        summary="Topic detail",
-        request=TopicSerializer,
-        responses={200: TopicSerializer}
-    ),
-    update=extend_schema(
-        summary="Update topic",
-        request=TopicSerializer,
-        responses={200: TopicSerializer}
-    ),
-    partial_update=extend_schema(
-        summary="Partial update topic",
-        request=TopicSerializer,
-        responses={200: TopicSerializer}
-    ),
-    destroy=extend_schema(
-        summary="Delete topic",
-        request=TopicSerializer
-    )
-)
-class TopicsView(viewsets.ModelViewSet):
-    serializer_class = TopicSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filterset_class = TopicFilter
-    queryset = Topic.objects.filter(is_active=True)
-    filter_backends = [DjangoFilterBackend]
 
 
 @extend_schema_view(

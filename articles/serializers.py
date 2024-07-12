@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Topic, Article, Comment, Clap, Favorite, ReadingHistory, Follow
+from .models import Topic, Article, Comment, Clap, Favorite, ReadingHistory, Follow, Recommendation
 from users.serializers import UserSerializer
 from drf_spectacular.utils import extend_schema_field
 from django.db.models import Sum
@@ -132,3 +132,14 @@ class FollowResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follow
         fields = ['follower', 'followee', 'created_at']
+
+
+class RecommendationRequestSerializer(serializers.Serializer):
+    more_topic_id = serializers.IntegerField(required=True)
+    less_topic_id = serializers.IntegerField(required=False)
+
+
+class RecommendationResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recommendation
+        fields = ['user', 'more', 'less', 'created_at']

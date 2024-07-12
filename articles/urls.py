@@ -30,4 +30,7 @@ urlpatterns = [
          views.FollowersListView.as_view(), name='followers'),
     path('users/<int:user_id>/following/',
          views.FollowingListView.as_view(), name='following'),
+    path('users/recommend/', views.RecommendationView.as_view(), name='recommend'),
+    path('users/recommendations/', views.UserRecommendationsView.as_view(),
+         name='user_recommendations'),
 ]

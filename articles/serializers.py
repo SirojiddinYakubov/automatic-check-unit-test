@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Topic, Article, Comment, Clap, Favorite, ReadingHistory,
-    Pin)
+    Pin, Notification, Report, FAQ)
 from users.serializers import UserSerializer
 from drf_spectacular.utils import extend_schema_field
 from django.db.models import Sum
@@ -160,3 +160,27 @@ class PinResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pin
         fields = ['id', 'user', 'article', 'created_at']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'read_at', 'created_at']
+
+
+class NotificationUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'read_at']
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['topic']
+
+
+class FAQSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FAQ
+        fields = ['id', 'question', 'answer']

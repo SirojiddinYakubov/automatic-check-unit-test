@@ -5,6 +5,7 @@ from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
 router.register(r'articles', views.ArticlesView, basename='articles')
 router.register(r'comments', views.CommentView, basename='comments')
+router.register(r'notification', views.UserNotificationView, basename='notification')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -30,4 +31,6 @@ urlpatterns = [
     path('users/<int:user_id>/following/',
          views.FollowingListView.as_view(), name='following'),
     path('users/recommend/', views.RecommendationView.as_view(), name='recommend'),
+    path('topics/report/', views.ReportTopicView.as_view(), name='report-topic'),
+    path('faqs/', views.FAQListView.as_view(), name='faq-list'),
 ]

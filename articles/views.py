@@ -9,13 +9,15 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from .models import (
     Topic, Article, TopicFollow, ArticleStatus,
     Comment, Favorite, Clap, ReadingHistory, Follow,
-    Recommendation, Pin)
+    Recommendation, Pin, Notification, Report, FAQ)
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
     ArticleDetailSerializer, ArticleDeleteSerializer,
     TopicFollowSerializer, CommentSerializer,
     FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
-    ReadingHistorySerializer, RecommendationSerializer, AuthorFollowSerializer)
+    ReadingHistorySerializer, RecommendationSerializer, AuthorFollowSerializer,
+    NotificationSerializer, NotificationUpdateSerializer, ReportSerializer,
+    FAQSerializer)
 from users.serializers import ValidationErrorSerializer, UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ArticleFilter, SearchFilter
@@ -227,6 +229,9 @@ class AuthorFollowView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AuthorFollowSerializer
 
+    def create_notification(self, user, message):
+        Notification.objects.create(user=user, message=message)
+
     def patch(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -235,11 +240,17 @@ class AuthorFollowView(APIView):
             followee = get_object_or_404(User, id=author_id)
 
             try:
-                follow = Follow.objects.get(follower=follower, followee=followee)
+                follow = Follow.objects.get(
+                    follower=follower, followee=followee)
                 follow.delete()
                 return Response(status=status.HTTP_204_NO_CONTENT)
             except Exception:
                 Follow.objects.create(follower=follower, followee=followee)
+
+                message_followee = _("{} sizga follow qildi.").format(
+                    follower.username)
+                self.create_notification(followee, message_followee)
+
                 return Response(status=status.HTTP_201_CREATED)
 
         raise exceptions.ValidationError(serializer.errors)
@@ -549,3 +560,95 @@ class RecommendationView(generics.GenericAPIView):
             return Response({"detail": _("Ajoyib, shunga o'xshash ko'proq maqolalarni tavsiya qilamiz.")}, status=status.HTTP_201_CREATED)
 
         raise exceptions.ValidationError(serializer.errors)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Get user notifications",
+        request=None,
+        responses={
+            200: NotificationSerializer(many=True),
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve a notification",
+        request=None,
+        responses={
+            200: NotificationSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
+    ),
+    partial_update=extend_schema(
+        summary="Update user notifications",
+        request=NotificationUpdateSerializer,
+        responses={
+            200: DefaultResponseSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
+    )
+)
+class UserNotificationView(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = NotificationSerializer
+    http_method_names = ['get', 'patch']
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user, read_at__isnull=True)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Report topic",
+        request=ReportSerializer,
+        responses={
+            201: DefaultResponseSerializer,
+            200: DefaultResponseSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
+    )
+)
+class ReportTopicView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ReportSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            topic_id = serializer.validated_data['topic'].id
+            topic = get_object_or_404(Topic, id=topic_id, is_active=True)
+
+            report, created = Report.objects.get_or_create(
+                user=user, topic=topic)
+
+            if created:
+                return Response({"status": _("Mavzu muvaffaqiyatli xabar qilindi.")}, status=status.HTTP_201_CREATED)
+            else:
+                return Response({"status": _("Mavzu allaqachon xabar qilingan.")}, status=status.HTTP_200_OK)
+
+        raise exceptions.ValidationError(serializer.errors)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="FAQs",
+        request=None,
+        responses={
+            200: FAQSerializer,
+            400: DefaultResponseSerializer
+        }
+    )
+)
+class FAQListView(generics.ListAPIView):
+    queryset = FAQ.objects.all()
+    serializer_class = FAQSerializer
+    permission_classes = [permissions.AllowAny]

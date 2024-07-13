@@ -28,42 +28,24 @@ User = get_user_model()
     create=extend_schema(
         summary="Create an article",
         request=ArticleCreateSerializer,
-        responses={
-            201: ArticleListSerializer,
-            400: DefaultResponseSerializer}
+        responses={201: ArticleDetailSerializer}
     ),
     list=extend_schema(
-        operation_id="list_articles",
         summary="List articles",
-        responses={200: ArticleListSerializer(many=True)}
+        responses={200: ArticleListSerializer}
     ),
     retrieve=extend_schema(
         summary="Retrieve an article",
-        responses={
-            200: ArticleDetailSerializer,
-            400: DefaultResponseSerializer,
-            404: DefaultResponseSerializer,
-            401: DefaultResponseSerializer
-        }
+        request=None,
+        responses={200: ArticleDetailSerializer}
     ),
     partial_update=extend_schema(
-        summary="Partial update article",
+        summary="Update an article",
         request=ArticleCreateSerializer,
-        responses={
-            200: ArticleListSerializer,
-            400: DefaultResponseSerializer,
-            404: DefaultResponseSerializer,
-            401: DefaultResponseSerializer}
+        responses={200: ArticleDetailSerializer}
     ),
     destroy=extend_schema(
-        summary="Delete an article",
-        request=None,
-        responses={
-            204: None,
-            400: DefaultResponseSerializer,
-            404: DefaultResponseSerializer,
-            401: DefaultResponseSerializer
-        }
+        summary="Delete an article"
     )
 )
 class ArticlesView(viewsets.ModelViewSet):
@@ -84,18 +66,21 @@ class ArticlesView(viewsets.ModelViewSet):
             return ArticleDeleteSerializer
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Article.objects.none()
+
         user = self.request.user
         queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
 
-        recommendations = Recommendation.objects.filter(user=user)
+        if user.is_authenticated:
+            recommendations = Recommendation.objects.filter(user=user)
+            more_topics = recommendations.values_list('more', flat=True)
+            less_topics = recommendations.values_list('less', flat=True)
 
-        more_topics = recommendations.values_list('more', flat=True)
-        less_topics = recommendations.values_list('less', flat=True)
-
-        if more_topics.exists():
-            queryset = queryset.filter(topics__in=more_topics)
-        if less_topics.exists():
-            queryset = queryset.exclude(topics__in=less_topics)
+            if more_topics.exists():
+                queryset = queryset.filter(topics__in=more_topics)
+            if less_topics.exists():
+                queryset = queryset.exclude(topics__in=less_topics)
 
         return queryset.distinct()
 

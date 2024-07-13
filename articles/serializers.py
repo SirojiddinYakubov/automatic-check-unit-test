@@ -88,35 +88,44 @@ class ArticleDetailSerializer(serializers.ModelSerializer):
 
 
 class ArticleCreateSerializer(serializers.ModelSerializer):
-    topic_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Topic.objects.filter(is_active=True), many=True, write_only=True, source='topics'
-    )
+    topic_ids = serializers.CharField(write_only=True)
+    id = serializers.ReadOnlyField()
+    status = serializers.ReadOnlyField()
+    created_at = serializers.ReadOnlyField()
+    updated_at = serializers.ReadOnlyField()
 
     class Meta:
         model = Article
-        fields = ['author', 'title', 'summary',
-                  'content', 'thumbnail', 'topic_ids']
+        fields = ['id', 'author', 'title', 'summary', 'content',
+                  'status', 'thumbnail', 'topic_ids', 'created_at', 'updated_at']
+
+    def validate_topic_ids(self, value):
+        topic_ids = [int(tid.strip()) for tid in value.split(',')]
+
+        existing_topic_ids = set(Topic.objects.values_list('pk', flat=True))
+        invalid_ids = [
+            tid for tid in topic_ids if tid not in existing_topic_ids]
+
+        if invalid_ids:
+            raise serializers.ValidationError(
+                f"Invalid primary key(s): {
+                    invalid_ids} - object does not exist."
+            )
+        return topic_ids
 
     def create(self, validated_data):
-        topics = validated_data.pop('topics', [])
+        topic_ids = validated_data.pop('topic_ids', [])
         article = Article.objects.create(**validated_data)
-        article.topics.set(topics)
+        article.topics.set(topic_ids)
         return article
 
     def update(self, instance, validated_data):
-        topics = validated_data.pop('topics', None)
+        topic_ids = validated_data.pop('topic_ids', [])
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        if topics is not None:
-            instance.topics.set(topics)
+        instance.topics.set(topic_ids)
         instance.save()
         return instance
-
-
-class ArticleDeleteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Article
-        fields = ['id']
 
 
 class TopicFollowSerializer(serializers.Serializer):

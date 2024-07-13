@@ -12,8 +12,7 @@ from .models import (
     Recommendation, Pin, Notification, Report, FAQ)
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
-    ArticleDetailSerializer, ArticleDeleteSerializer,
-    TopicFollowSerializer, CommentSerializer,
+    ArticleDetailSerializer, TopicFollowSerializer, CommentSerializer,
     FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
     ReadingHistorySerializer, RecommendationSerializer, AuthorFollowSerializer,
     NotificationSerializer, NotificationUpdateSerializer, ReportSerializer,
@@ -30,24 +29,45 @@ User = get_user_model()
     create=extend_schema(
         summary="Create an article",
         request=ArticleCreateSerializer,
-        responses={201: ArticleDetailSerializer}
+        responses={
+            201: ArticleCreateSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     ),
     list=extend_schema(
         summary="List articles",
-        responses={200: ArticleListSerializer}
+        responses={
+            200: ArticleListSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     ),
     retrieve=extend_schema(
         summary="Retrieve an article",
         request=None,
-        responses={200: ArticleDetailSerializer}
+        responses={
+            200: ArticleDetailSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     ),
     partial_update=extend_schema(
         summary="Update an article",
         request=ArticleCreateSerializer,
-        responses={200: ArticleDetailSerializer}
+        responses={
+            200: ArticleDetailSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     ),
     destroy=extend_schema(
-        summary="Delete an article"
+        summary="Delete an article",
+        responses={
+            204: None,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     )
 )
 class ArticlesView(viewsets.ModelViewSet):
@@ -64,8 +84,6 @@ class ArticlesView(viewsets.ModelViewSet):
             return ArticleListSerializer
         if self.action == 'retrieve':
             return ArticleDetailSerializer
-        if self.action == 'destroy':
-            return ArticleDeleteSerializer
         return ArticleListSerializer
 
     def get_queryset(self):

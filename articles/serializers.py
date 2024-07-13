@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Topic, Article, Comment, Clap, Favorite, ReadingHistory,
-    Follow, Recommendation, Pin)
+    Follow, Pin)
 from users.serializers import UserSerializer
 from drf_spectacular.utils import extend_schema_field
 from django.db.models import Sum
@@ -16,13 +16,34 @@ class TopicSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'is_active']
 
 
-class CommentSerializer(serializers.ModelSerializer):
-    parent = serializers.PrimaryKeyRelatedField(
-        queryset=Comment.objects.all(), required=False, allow_null=True)
+class ReplySerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = Comment
-        fields = ['article', 'user', 'parent', 'content']
+        fields = ['id', 'user', 'content', 'created_at']
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'article', 'user', 'parent',
+                  'content', 'created_at', 'replies']
+
+    @extend_schema_field(ReplySerializer(many=True))
+    def get_replies(self, obj):
+        if obj.parent is None:
+            replies = Comment.objects.filter(parent=obj)
+            return ReplySerializer(replies, many=True).data
+        return []
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        return Comment.objects.create(user=user, **validated_data)
+
 
 
 class ClapSerializer(serializers.ModelSerializer):
@@ -136,15 +157,9 @@ class FollowResponseSerializer(serializers.ModelSerializer):
         fields = ['follower', 'followee', 'created_at']
 
 
-class RecommendationRequestSerializer(serializers.Serializer):
-    more_topic_id = serializers.IntegerField(required=True)
+class RecommendationSerializer(serializers.Serializer):
+    more_topic_id = serializers.IntegerField(required=False)
     less_topic_id = serializers.IntegerField(required=False)
-
-
-class RecommendationResponseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Recommendation
-        fields = ['user', 'more', 'less', 'created_at']
 
 
 class PinRequestSerializer(serializers.Serializer):

@@ -62,7 +62,7 @@ class Article(BaseModel):
         ordering = ['-created_at']
 
     def __str__(self):
-        return self.title
+        return f"{self.title} - {self.topics}"
 
 
 class Comment(BaseModel):
@@ -153,11 +153,11 @@ class Recommendation(BaseModel):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="recommendations"
     )
-    more = models.ForeignKey(
-        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="more_recommended"
+    more = models.ManyToManyField(
+        Topic, limit_choices_to={'is_active': True}, related_name="more_recommended"
     )
-    less = models.ForeignKey(
-        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="less_recommended", null=True, blank=True
+    less = models.ManyToManyField(
+        Topic, limit_choices_to={'is_active': True}, related_name="less_recommended"
     )
 
     class Meta:
@@ -165,6 +165,9 @@ class Recommendation(BaseModel):
         verbose_name = "Recommendation"
         verbose_name_plural = "Recommendations"
         ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.user} - {self.more}"
 
 
 class Notification(BaseModel):

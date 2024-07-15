@@ -1,5 +1,5 @@
 import django_filters
-from .models import Article, Topic
+from .models import Article, Topic, Recommendation
 from django.db.models import Q
 from django.db.models import Count
 
@@ -18,11 +18,16 @@ class ArticleFilter(django_filters.FilterSet):
         return queryset
 
     def filter_by_recommend(self, queryset, name, value):
+        user = self.request.user
         if value:
-            user = self.request.user
-            followed_topics = user.topic_follows.all().values_list('topic', flat=True)
-            recommended_articles = queryset.filter(topics__in=followed_topics).distinct()
-            return recommended_articles
+            recommendations = Recommendation.objects.filter(user=user)
+            more_topics = recommendations.values_list('more', flat=True)
+            less_topics = recommendations.values_list('less', flat=True)
+
+            if more_topics.exists():
+                queryset = queryset.filter(topics__in=more_topics)
+            if less_topics.exists():
+                queryset = queryset.exclude(topics__in=less_topics)
         return queryset
 
     def filter_by_topic(self, queryset, name, value):

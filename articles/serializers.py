@@ -88,30 +88,19 @@ class ArticleDetailSerializer(serializers.ModelSerializer):
 
 
 class ArticleCreateSerializer(serializers.ModelSerializer):
-    topic_ids = serializers.CharField(write_only=True)
-    id = serializers.ReadOnlyField()
-    status = serializers.ReadOnlyField()
-    created_at = serializers.ReadOnlyField()
-    updated_at = serializers.ReadOnlyField()
+    author_id = serializers.IntegerField(write_only=True)
+    author = UserSerializer(read_only=True)
+    topic_ids = serializers.ListField(
+        child=serializers.PrimaryKeyRelatedField(queryset=Topic.objects.filter(is_active=True)),
+        write_only=True
+    )
+    topics = TopicSerializer(many=True, read_only=True)
 
     class Meta:
         model = Article
-        fields = ['id', 'author', 'title', 'summary', 'content',
-                  'status', 'thumbnail', 'topic_ids', 'created_at', 'updated_at']
-
-    def validate_topic_ids(self, value):
-        topic_ids = [int(tid.strip()) for tid in value.split(',')]
-
-        existing_topic_ids = set(Topic.objects.values_list('pk', flat=True))
-        invalid_ids = [
-            tid for tid in topic_ids if tid not in existing_topic_ids]
-
-        if invalid_ids:
-            raise serializers.ValidationError(
-                f"Invalid primary key(s): {
-                    invalid_ids} - object does not exist."
-            )
-        return topic_ids
+        fields = ['id', 'author_id', 'author', 'title', 'summary', 'content',
+                  'status', 'thumbnail', 'topic_ids', 'topics', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'status', 'created_at', 'updated_at']
 
     def create(self, validated_data):
         topic_ids = validated_data.pop('topic_ids', [])

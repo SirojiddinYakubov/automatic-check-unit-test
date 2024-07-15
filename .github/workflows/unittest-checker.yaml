@@ -6,10 +6,6 @@ on:
         description: 'Tests path'
         required: false
         default: 'tests'
-      timeout_minutes:
-        description: 'Timeout minutes'
-        required: false
-        default: '10'
   push:
     branches: [ "main" ]
 
@@ -17,7 +13,7 @@ jobs:
   deploy:
     name: Check code via CI/CD
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ github.event.inputs.timeout_minutes }}
+    timeout-minutes: 20
 
     steps:
       - name: Send a signal to the webhook that the job has started.

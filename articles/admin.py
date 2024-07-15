@@ -6,9 +6,15 @@ from .models import (
     Notification, ReadingHistory,
     TopicFollow, FAQ, Report,)
 
+class ArticlesAdmin(admin.ModelAdmin):
+    def get_topics(self, obj):
+        return ", ".join([topic.name for topic in obj.topics.all()])
+
+    list_display = ('title', 'author', 'get_topics',)
+
 
 admin.site.register(Topic)
-admin.site.register(Article)
+admin.site.register(Article, ArticlesAdmin)
 admin.site.register(Comment)
 admin.site.register(Favorite)
 admin.site.register(Clap)

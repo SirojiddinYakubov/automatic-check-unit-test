@@ -6,6 +6,7 @@ from users.serializers import UserSerializer
 from drf_spectacular.utils import extend_schema_field
 from django.db.models import Sum
 from django.contrib.auth import get_user_model
+from .models import ArticleStatus
 
 User = get_user_model()
 
@@ -103,7 +104,7 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         topic_ids = validated_data.pop('topic_ids', [])
-        article = Article.objects.create(**validated_data)
+        article = Article.objects.create(**validated_data, status=ArticleStatus.PENDING)
         article.topics.set(topic_ids)
         return article
 

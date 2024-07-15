@@ -99,11 +99,8 @@ class ArticlesView(viewsets.ModelViewSet):
 
         if user.is_authenticated:
             recommendations = Recommendation.objects.filter(user=user)
-            more_topics = recommendations.values_list('more', flat=True)
             less_topics = recommendations.values_list('less', flat=True)
 
-            if more_topics.exists():
-                queryset = queryset.filter(topics__in=more_topics)
             if less_topics.exists():
                 queryset = queryset.exclude(topics__in=less_topics)
 
@@ -508,7 +505,7 @@ class FollowingListView(generics.ListAPIView):
         summary="Recommend More Articles",
         request=RecommendationSerializer,
         responses=default_response(
-            201, 400, 401, 404
+            (201, None), 400, 401, 404
         )
     )
 )
@@ -528,18 +525,21 @@ class RecommendationView(generics.GenericAPIView):
         more_topic_id = serializer.validated_data.get('more_topic_id')
         less_topic_id = serializer.validated_data.get('less_topic_id')
 
-        more_topic = None
-        if more_topic_id:
-            more_topic = get_object_or_404(
-                Topic, id=more_topic_id, is_active=True)
-        less_topic = None
-        if less_topic_id:
-            less_topic = get_object_or_404(
-                Topic, id=less_topic_id, is_active=True)
+        recommendation, created = Recommendation.objects.get_or_create(user=user)
 
-        Recommendation.objects.create(
-            user=user, more=more_topic, less=less_topic)
-        return Response({"detail": _("Ajoyib, shunga o'xshash ko'proq maqolalarni tavsiya qilamiz.")}, status=status.HTTP_201_CREATED)
+        if more_topic_id:
+            more_topic = get_object_or_404(Topic, id=more_topic_id, is_active=True)
+            if recommendation.less.filter(id=more_topic_id).exists():
+                recommendation.less.remove(more_topic)
+            recommendation.more.add(more_topic)
+
+        if less_topic_id:
+            less_topic = get_object_or_404(Topic, id=less_topic_id, is_active=True)
+            if recommendation.more.filter(id=less_topic_id).exists():
+                recommendation.more.remove(less_topic)
+            recommendation.less.add(less_topic)
+
+        return Response(status=status.HTTP_201_CREATED)
 
 
 @extend_schema_view(

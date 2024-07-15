@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import Topic, Article, Comment, Clap, Favorite, ReadingHistory, Follow
+from .models import (
+    Topic, Article, Comment, Clap, Favorite, ReadingHistory,
+    Pin, Notification, Report, FAQ)
 from users.serializers import UserSerializer
 from drf_spectacular.utils import extend_schema_field
 from django.db.models import Sum
@@ -14,13 +16,33 @@ class TopicSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'is_active']
 
 
-class CommentSerializer(serializers.ModelSerializer):
-    parent = serializers.PrimaryKeyRelatedField(
-        queryset=Comment.objects.all(), required=False, allow_null=True)
+class ReplySerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = Comment
-        fields = ['article', 'user', 'parent', 'content']
+        fields = ['id', 'user', 'content', 'created_at']
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'article', 'user', 'parent',
+                  'content', 'created_at', 'replies']
+
+    @extend_schema_field(ReplySerializer(many=True))
+    def get_replies(self, obj):
+        if obj.parent is None:
+            replies = Comment.objects.filter(parent=obj)
+            return ReplySerializer(replies, many=True).data
+        return []
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        return Comment.objects.create(user=user, **validated_data)
 
 
 class ClapSerializer(serializers.ModelSerializer):
@@ -66,39 +88,52 @@ class ArticleDetailSerializer(serializers.ModelSerializer):
 
 
 class ArticleCreateSerializer(serializers.ModelSerializer):
-    topic_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Topic.objects.filter(is_active=True), many=True, write_only=True, source='topics'
-    )
+    topic_ids = serializers.CharField(write_only=True)
+    id = serializers.ReadOnlyField()
+    status = serializers.ReadOnlyField()
+    created_at = serializers.ReadOnlyField()
+    updated_at = serializers.ReadOnlyField()
 
     class Meta:
         model = Article
-        fields = ['author', 'title', 'summary',
-                  'content', 'status', 'thumbnail', 'topic_ids']
+        fields = ['id', 'author', 'title', 'summary', 'content',
+                  'status', 'thumbnail', 'topic_ids', 'created_at', 'updated_at']
+
+    def validate_topic_ids(self, value):
+        topic_ids = [int(tid.strip()) for tid in value.split(',')]
+
+        existing_topic_ids = set(Topic.objects.values_list('pk', flat=True))
+        invalid_ids = [
+            tid for tid in topic_ids if tid not in existing_topic_ids]
+
+        if invalid_ids:
+            raise serializers.ValidationError(
+                f"Invalid primary key(s): {
+                    invalid_ids} - object does not exist."
+            )
+        return topic_ids
 
     def create(self, validated_data):
-        topics = validated_data.pop('topics', [])
+        topic_ids = validated_data.pop('topic_ids', [])
         article = Article.objects.create(**validated_data)
-        article.topics.set(topics)
+        article.topics.set(topic_ids)
         return article
 
     def update(self, instance, validated_data):
-        topics = validated_data.pop('topics', None)
+        topic_ids = validated_data.pop('topic_ids', [])
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        if topics is not None:
-            instance.topics.set(topics)
+        instance.topics.set(topic_ids)
         instance.save()
         return instance
 
 
-class ArticleDeleteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Article
-        fields = ['id']
-
-
 class TopicFollowSerializer(serializers.Serializer):
     topic_id = serializers.IntegerField()
+
+
+class AuthorFollowSerializer(serializers.Serializer):
+    author_id = serializers.IntegerField()
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
@@ -121,14 +156,40 @@ class ReadingHistorySerializer(serializers.ModelSerializer):
         fields = ['id', 'article', 'created_at']
 
 
-class FollowRequestSerializer(serializers.Serializer):
-    followee_id = serializers.IntegerField()
+class RecommendationSerializer(serializers.Serializer):
+    more_topic_id = serializers.IntegerField(required=False)
+    less_topic_id = serializers.IntegerField(required=False)
 
 
-class FollowResponseSerializer(serializers.ModelSerializer):
-    follower = UserSerializer
-    followee = UserSerializer
+class PinRequestSerializer(serializers.Serializer):
+    article_id = serializers.IntegerField()
 
+
+class PinResponseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Follow
-        fields = ['follower', 'followee', 'created_at']
+        model = Pin
+        fields = ['id', 'user', 'article', 'created_at']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'read_at', 'created_at']
+
+
+class NotificationUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'read_at']
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['topic']
+
+
+class FAQSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FAQ
+        fields = ['id', 'question', 'answer']

@@ -1,6 +1,6 @@
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
-from rest_framework import permissions, status, viewsets, parsers, generics
+from rest_framework import permissions, status, viewsets, parsers, generics, exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
@@ -8,16 +8,19 @@ from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from .models import (
     Topic, Article, TopicFollow, ArticleStatus,
-    Comment, Favorite, Clap, ReadingHistory, Follow)
+    Comment, Favorite, Clap, ReadingHistory, Follow,
+    Recommendation, Pin, Notification, Report, FAQ)
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
-    ArticleDeleteSerializer, ArticleDetailSerializer,
-    TopicSerializer, TopicFollowSerializer, CommentSerializer,
+    ArticleDetailSerializer, TopicFollowSerializer, CommentSerializer,
     FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
-    ReadingHistorySerializer, FollowRequestSerializer, FollowResponseSerializer)
+    ReadingHistorySerializer, RecommendationSerializer, AuthorFollowSerializer,
+    NotificationSerializer, NotificationUpdateSerializer, ReportSerializer,
+    FAQSerializer)
 from users.serializers import ValidationErrorSerializer, UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
-from .filters import ArticleFilter, TopicFilter, SearchFilter
+from .filters import ArticleFilter, SearchFilter
+from rest_framework.decorators import action
 
 User = get_user_model()
 
@@ -26,49 +29,81 @@ User = get_user_model()
     create=extend_schema(
         summary="Create an article",
         request=ArticleCreateSerializer,
-        responses={200: ArticleListSerializer, 401: ValidationErrorSerializer}
+        responses={
+            201: ArticleCreateSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     ),
     list=extend_schema(
-        operation_id="list_articles",
         summary="List articles",
-        responses={200: ArticleListSerializer(many=True)}
+        responses={
+            200: ArticleListSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     ),
     retrieve=extend_schema(
-        summary="Article detail",
-        responses={200: ArticleDetailSerializer(many=True)}
-    ),
-    update=extend_schema(
-        summary="Update article",
-        request=ArticleCreateSerializer,
-        responses={200: ArticleListSerializer(many=True)}
+        summary="Retrieve an article",
+        request=None,
+        responses={
+            200: ArticleDetailSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     ),
     partial_update=extend_schema(
-        summary="Partial update article",
+        summary="Update an article",
         request=ArticleCreateSerializer,
-        responses={200: ArticleListSerializer(many=True)}
+        responses={
+            200: ArticleDetailSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     ),
     destroy=extend_schema(
-        summary="Delete article",
-        request=ArticleDeleteSerializer
+        summary="Delete an article",
+        responses={
+            204: None,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        }
     )
 )
 class ArticlesView(viewsets.ModelViewSet):
-    serializer_class = ArticleListSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = ArticleFilter
-    queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
     filter_backends = [DjangoFilterBackend]
     parser_classes = [parsers.MultiPartParser]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action in ['create', 'partial_update']:
             return ArticleCreateSerializer
         if self.action == 'list':
             return ArticleListSerializer
         if self.action == 'retrieve':
             return ArticleDetailSerializer
-        if self.action == 'destroy':
-            return ArticleDeleteSerializer
+        return ArticleListSerializer
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Article.objects.none()
+
+        user = self.request.user
+        queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
+
+        if user.is_authenticated:
+            recommendations = Recommendation.objects.filter(user=user)
+            more_topics = recommendations.values_list('more', flat=True)
+            less_topics = recommendations.values_list('less', flat=True)
+
+            if more_topics.exists():
+                queryset = queryset.filter(topics__in=more_topics)
+            if less_topics.exists():
+                queryset = queryset.exclude(topics__in=less_topics)
+
+        return queryset.distinct()
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -76,48 +111,88 @@ class ArticlesView(viewsets.ModelViewSet):
         instance.save(update_fields=['views_count'])
 
         ReadingHistory.objects.get_or_create(
-            user=request.user, article=instance)
+            user=request.user, article=instance
+        )
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-
-@extend_schema_view(
-    create=extend_schema(
-        summary="Create a topic",
-        request=TopicSerializer,
-        responses={200: TopicSerializer}
-    ),
-    list=extend_schema(
-        summary="List topics",
-        responses={200: TopicSerializer}
-    ),
-    retrieve=extend_schema(
-        summary="Topic detail",
-        request=TopicSerializer,
-        responses={200: TopicSerializer}
-    ),
-    update=extend_schema(
-        summary="Update topic",
-        request=TopicSerializer,
-        responses={200: TopicSerializer}
-    ),
-    partial_update=extend_schema(
-        summary="Partial update topic",
-        request=TopicSerializer,
-        responses={200: TopicSerializer}
-    ),
-    destroy=extend_schema(
-        summary="Delete topic",
-        request=TopicSerializer
+    @extend_schema(
+        summary="Archive an article",
+        description="Set the status of the article to 'archive'.",
+        responses={
+            200: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        },
+        tags=['articles']
     )
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def archive(self, request, pk=None):
+        article = self.get_object()
+        article.status = ArticleStatus.ARCHIVE
+        article.save(update_fields=['status'])
+        return Response({"detail": _("Maqola arxivlandi.")}, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Pin an article",
+        description="Pin an article for the authenticated user.",
+        responses={
+            200: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        },
+        tags=['articles']
+    )
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def pin(self, request, pk=None):
+        article = self.get_object()
+        user = request.user
+
+        if Pin.objects.filter(user=user, article=article).exists():
+            return Response({"status": _("Maqola allaqachon pin qilingan.")}, status=status.HTTP_400_BAD_REQUEST)
+
+        Pin.objects.create(user=user, article=article)
+        return Response({"status": _("Maqola pin qilindi.")}, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Unpin an article",
+        description="Unpin an article for the authenticated user.",
+        responses={
+            200: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            400: DefaultResponseSerializer
+        },
+        tags=['articles']
+    )
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def unpin(self, request, pk=None):
+        article = self.get_object()
+        user = request.user
+
+        pin = Pin.objects.filter(user=user, article=article).first()
+        if not pin:
+            return Response({"status": _("Maqola pin qilinmagan")}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    summary="Get user-pinned articles",
+    description="Retrieve a list of articles pinned by the authenticated user.",
+    request=None,
+    responses={
+        200: ArticleListSerializer(many=True),
+        404: DefaultResponseSerializer,
+        400: DefaultResponseSerializer
+    }
 )
-class TopicsView(viewsets.ModelViewSet):
-    serializer_class = TopicSerializer
+class UserPinnedArticles(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    filterset_class = TopicFilter
-    queryset = Topic.objects.filter(is_active=True)
-    filter_backends = [DjangoFilterBackend]
+    serializer_class = ArticleListSerializer
+    http_method_names = ['get']
+
+    def get_queryset(self):
+        user = self.request.user
+        return Article.objects.filter(pins__user=user)
 
 
 @extend_schema_view(
@@ -153,46 +228,88 @@ class TopicFollowView(APIView):
                 topic_follow.delete()
                 return Response({"detail": _("Siz '{topic_name}' mavzusini kuzatishni bekor qildingiz.".format(topic_name=topic.name))}, status=status.HTTP_200_OK)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        raise exceptions.ValidationError(serializer.errors)
+
+
+@extend_schema_view(
+    patch=extend_schema(
+        summary="Follow or unfollow a author",
+        request=AuthorFollowSerializer,
+        responses={
+            201: DefaultResponseSerializer,
+            204: DefaultResponseSerializer,
+            400: ValidationErrorSerializer,
+            404: ValidationErrorSerializer
+        }
+    )
+)
+class AuthorFollowView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AuthorFollowSerializer
+
+    def create_notification(self, user, message):
+        Notification.objects.create(user=user, message=message)
+
+    def patch(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            follower = request.user
+            author_id = serializer.validated_data['author_id']
+            followee = get_object_or_404(User, id=author_id)
+
+            try:
+                follow = Follow.objects.get(
+                    follower=follower, followee=followee)
+                follow.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            except Exception:
+                Follow.objects.create(follower=follower, followee=followee)
+
+                message_followee = _("{} sizga follow qildi.").format(
+                    follower.username)
+                self.create_notification(followee, message_followee)
+
+                return Response(status=status.HTTP_201_CREATED)
+
+        raise exceptions.ValidationError(serializer.errors)
 
 
 @extend_schema_view(
     create=extend_schema(
         summary="Create a comment",
         request=CommentSerializer,
-        responses={200: CommentSerializer}
-    ),
-    list=extend_schema(
-        summary="List comments",
-        responses={200: CommentSerializer}
-    ),
-    retrieve=extend_schema(
-        summary="comment detail",
-        request=CommentSerializer,
-        responses={200: CommentSerializer}
-    ),
-    update=extend_schema(
-        summary="Update comment",
-        request=CommentSerializer,
-        responses={200: CommentSerializer}
+        responses={
+            201: CommentSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
     ),
     partial_update=extend_schema(
-        summary="Partial update comment",
+        summary="Update comment",
         request=CommentSerializer,
-        responses={200: CommentSerializer}
+        responses={
+            200: CommentSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
     ),
     destroy=extend_schema(
         summary="Delete comment",
-        request=CommentSerializer
+        request=None,
+        responses={
+            204: None,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer}
     )
 )
-class CommentCreateView(viewsets.ModelViewSet):
+class CommentView(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    http_method_names = ['post', 'patch', 'delete']
 
 
 @extend_schema_view(
@@ -211,12 +328,22 @@ class SearchView(generics.ListAPIView):
 @extend_schema_view(
     post=extend_schema(
         summary="Add Article To Favorite",
-        request=ArticleListSerializer,
-        responses={200: DefaultResponseSerializer}
+        request=None,
+        responses={
+            201: DefaultResponseSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer}
     ),
     delete=extend_schema(
         summary="Delete Favorite",
-        request=ArticleListSerializer
+        request=None,
+        responses={
+            204: None,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
     ))
 class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -230,14 +357,14 @@ class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
         if created:
             return Response({'detail': _("Maqola sevimlilarga qo'shildi.")}, status=status.HTTP_201_CREATED)
         else:
-            return Response({'detail': _("Maqola allaqachon sevimlilar ro'yxatiga kiritilgan.")}, status=status.HTTP_200_OK)
+            return Response({'detail': _("Maqola allaqachon sevimlilar ro'yxatiga kiritilgan.")}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, *args, **kwargs):
         article = self.get_object()
         favorite = get_object_or_404(
             Favorite, user=request.user, article=article)
         favorite.delete()
-        return Response({'detail': _("Maqola sevimlilardan olib tashlandi.")}, status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema_view(
@@ -261,17 +388,19 @@ class UserFavoritesListView(generics.ListAPIView):
         request=None,
         responses={
             201: ClapSerializer,
-            401: ValidationErrorSerializer
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
         }
     ),
     delete=extend_schema(
         summary="Undo Claps",
         request=None,
         responses={
-            200: DefaultResponseSerializer,
-            400: ValidationErrorSerializer,
-            404: ValidationErrorSerializer,
-            401: ValidationErrorSerializer
+            204: None,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
         }
     )
 )
@@ -279,12 +408,12 @@ class ClapView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ClapSerializer
 
+    def get_queryset(self):
+        return Article.objects.filter(status=ArticleStatus.PUBLISH)
+
     def post(self, request, article_id):
         user = request.user
-        try:
-            article = Article.objects.get(id=article_id)
-        except Article.DoesNotExist:
-            return Response({"detail": _("Maqola mavjud emas.")}, status=status.HTTP_404_NOT_FOUND)
+        article = get_object_or_404(self.get_queryset(), id=article_id)
 
         clap, created = Clap.objects.get_or_create(user=user, article=article)
         clap.count = min(clap.count + 1, 50)
@@ -295,17 +424,14 @@ class ClapView(generics.GenericAPIView):
 
     def delete(self, request, article_id):
         user = request.user
-        try:
-            article = Article.objects.get(id=article_id)
-        except Article.DoesNotExist:
-            return Response({"detail": _("Maqola mavjud emas.")}, status=status.HTTP_404_NOT_FOUND)
+        article = get_object_or_404(self.get_queryset(), id=article_id)
 
         try:
             clap = Clap.objects.get(user=user, article=article)
             clap.delete()
-            return Response({"detail": _("Qarsaklar bekor qilindi.")}, status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except Clap.DoesNotExist:
-            return Response({"detail": _("Bekor qilish uchun qarsaklar yo'q.")}, status=status.HTTP_400_BAD_REQUEST)
+            raise exceptions.NotAcceptable
 
 
 @extend_schema_view(
@@ -313,9 +439,10 @@ class ClapView(generics.GenericAPIView):
         summary="Article Reads",
         request=None,
         responses={
-            202: DefaultResponseSerializer,
-            404: ValidationErrorSerializer,
-            401: ValidationErrorSerializer
+            200: DefaultResponseSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
         }
     )
 )
@@ -329,7 +456,7 @@ class ArticleReadView(APIView):
             instance.save(update_fields=['reads_count'])
             return Response({"detail": _("Maqolani o'qish soni ortdi.")}, status=status.HTTP_200_OK)
         except Article.DoesNotExist:
-            return Response({"detail": _("Maqola mavjud emas.")}, status=status.HTTP_404_NOT_FOUND)
+            raise exceptions.NotFound
 
 
 @extend_schema_view(
@@ -374,74 +501,6 @@ class ReadingHistoryView(generics.ListAPIView):
 
 
 @extend_schema_view(
-    post=extend_schema(
-        summary="Follow an Author",
-        request=FollowRequestSerializer,
-        responses={201: FollowResponseSerializer}
-    )
-)
-class FollowView(generics.GenericAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = FollowRequestSerializer
-
-    def get_queryset(self):
-        return User.objects.filter(is_active=True)
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            follower = request.user
-            followee_id = serializer.validated_data['followee_id']
-
-            try:
-                followee = User.objects.get(id=followee_id, is_active=True)
-            except User.DoesNotExist:
-                return Response({"detail": _("Foydalanuvchi mavjud emas.")}, status=status.HTTP_404_NOT_FOUND)
-
-            if Follow.objects.filter(follower=follower, followee=followee).exists():
-                return Response({"detail": _("Siz allaqachon bu foydalanuvchini kuzatib borasiz.")}, status=status.HTTP_400_BAD_REQUEST)
-
-            follow = Follow.objects.create(
-                follower=follower, followee=followee)
-            response_serializer = FollowResponseSerializer(follow)
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@extend_schema_view(
-    delete=extend_schema(
-        summary="Unfollow an Author",
-        responses={
-            204: None,
-            400: DefaultResponseSerializer,
-            404: DefaultResponseSerializer
-        }
-    )
-)
-class UnfollowView(generics.GenericAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return User.objects.filter(is_active=True)
-
-    def get_object(self):
-        return generics.get_object_or_404(self.get_queryset(), id=self.kwargs['followee_id'])
-
-    def delete(self, request, followee_id, *args, **kwargs):
-        follower = request.user
-
-        followee = self.get_object()
-
-        try:
-            follow = Follow.objects.get(follower=follower, followee=followee)
-            follow.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Follow.DoesNotExist:
-            return Response({"detail": _("Siz bu foydalanuvchini kuzatmayapsiz.")}, status=status.HTTP_400_BAD_REQUEST)
-
-
-@extend_schema_view(
     get=extend_schema(
         summary="Followers List",
         request=None,
@@ -475,3 +534,139 @@ class FollowingListView(generics.ListAPIView):
     def get_queryset(self):
         user_id = self.kwargs['user_id']
         return User.objects.filter(followers__follower_id=user_id, is_active=True)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Recommend More Articles",
+        request=RecommendationSerializer,
+        responses={
+            201: DefaultResponseSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
+    )
+)
+class RecommendationView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = RecommendationSerializer
+
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault('context', self.get_serializer_context())
+        return serializer_class(*args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            more_topic_id = serializer.validated_data.get('more_topic_id')
+            less_topic_id = serializer.validated_data.get('less_topic_id')
+
+            more_topic = None
+            if more_topic_id:
+                more_topic = get_object_or_404(
+                    Topic, id=more_topic_id, is_active=True)
+            less_topic = None
+            if less_topic_id:
+                less_topic = get_object_or_404(
+                    Topic, id=less_topic_id, is_active=True)
+
+            Recommendation.objects.create(
+                user=user, more=more_topic, less=less_topic)
+            return Response({"detail": _("Ajoyib, shunga o'xshash ko'proq maqolalarni tavsiya qilamiz.")}, status=status.HTTP_201_CREATED)
+
+        raise exceptions.ValidationError(serializer.errors)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Get user notifications",
+        request=None,
+        responses={
+            200: NotificationSerializer(many=True),
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve a notification",
+        request=None,
+        responses={
+            200: NotificationSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
+    ),
+    partial_update=extend_schema(
+        summary="Update user notifications",
+        request=NotificationUpdateSerializer,
+        responses={
+            200: DefaultResponseSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
+    )
+)
+class UserNotificationView(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = NotificationSerializer
+    http_method_names = ['get', 'patch']
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user, read_at__isnull=True)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Report topic",
+        request=ReportSerializer,
+        responses={
+            201: DefaultResponseSerializer,
+            200: DefaultResponseSerializer,
+            400: DefaultResponseSerializer,
+            404: DefaultResponseSerializer,
+            401: DefaultResponseSerializer
+        }
+    )
+)
+class ReportTopicView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ReportSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            topic_id = serializer.validated_data['topic'].id
+            topic = get_object_or_404(Topic, id=topic_id, is_active=True)
+
+            report, created = Report.objects.get_or_create(
+                user=user, topic=topic)
+
+            if created:
+                return Response({"status": _("Mavzu muvaffaqiyatli xabar qilindi.")}, status=status.HTTP_201_CREATED)
+            else:
+                return Response({"status": _("Mavzu allaqachon xabar qilingan.")}, status=status.HTTP_200_OK)
+
+        raise exceptions.ValidationError(serializer.errors)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="FAQs",
+        request=None,
+        responses={
+            200: FAQSerializer,
+            400: DefaultResponseSerializer
+        }
+    )
+)
+class FAQListView(generics.ListAPIView):
+    queryset = FAQ.objects.all()
+    serializer_class = FAQSerializer
+    permission_classes = [permissions.AllowAny]

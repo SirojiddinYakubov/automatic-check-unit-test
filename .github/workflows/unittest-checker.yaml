@@ -1,4 +1,4 @@
-name: Unittest Check CI/CD
+name: Medium Clone Check CI/CD
 on:
   workflow_dispatch:
     inputs:
@@ -6,40 +6,50 @@ on:
         description: 'Tests path'
         required: false
         default: 'tests'
+      timeout_minutes:
+        description: 'Timeout minutes'
+        required: false
+        default: '10'
   push:
-    branches: [ "unittest" ]
+    branches: [ "main" ]
 
 jobs:
   deploy:
-    name: Check CI/CD
+    name: Check code via CI/CD
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: ${{ github.event.inputs.timeout_minutes }}
 
     steps:
+      - name: Send a signal to the webhook that the job has started.
+        run: |
+          curl -X POST --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.actor }}/' \
+          --header 'X-API-KEY: ${{ secrets.X_API_KEY }}' \
+          --form 'action_run_id=${{ github.run_id }}' \
+          --form 'project_id=${{ secrets.PROJECT_ID }}' \
+          --form 'tests_path=${{ github.event.inputs.tests_path }}'
+
       - name: Checkout original repository
         uses: actions/checkout@v3
         with:
           repository: sirojiddinyakubov/medium-clone-backend
           path: original-repo
-          ref: unittest
+          ref: main
 
       - name: Checkout forked repository
         uses: actions/checkout@v3
         with:
           path: forked-repo
-          ref: unittest
+          ref: main
 
       - name: Move tests folder from original to forked
         run: |
           rm -rf forked-repo/tests
           mv original-repo/tests forked-repo/
           rm -rf original-repo
-        continue-on-error: true
 
       - name: Create .env file
         working-directory: forked-repo
         run: cp .env.example .env
-        continue-on-error: true
 
       - name: Run app
         working-directory: forked-repo
@@ -49,31 +59,11 @@ jobs:
           docker ps -a
           sleep 5s
           docker logs medium_app
-        continue-on-error: true
 
       - name: Curl
         run: |
           sleep 5s
           curl -v http://127.0.0.1:8000/health/
-        continue-on-error: true
-
-      #      - name: Download test zip File
-      #        run: |
-      #          curl -L "${{ secrets.CHECK_FILE }}" > tests.zip
-      #        continue-on-error: true
-      #
-      #      - name: Unzip check test zip folder
-      #        run: |
-      #          unzip tests.zip
-
-
-      #      - name: Test database connection
-      #        run: |
-      #          sudo apt-get install -y postgresql-client redis-tools
-      #          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "CREATE TABLE student(id SERIAL PRIMARY KEY, firstName VARCHAR(40) NOT NULL, lastName VARCHAR(40) NOT NULL, age INT, address VARCHAR(80), email VARCHAR(40))"
-      #          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "INSERT INTO student(firstname, lastname, age, address, email) VALUES('test', 'test2', 12, 'test3', 'admin@admin.com') RETURNING *"
-      #          PGPASSWORD=postgres-pass psql -h localhost -p 5432 -U postgres -d blog_db -c "SELECT * FROM student"
-      #        continue-on-error: true
 
       - name: Run Tests
         working-directory: forked-repo
@@ -85,11 +75,12 @@ jobs:
         with:
           name: unittest-checker-artifact
           path: ./reports/unittest-checker-report.json
-        continue-on-error: true
 
       - name: Send run_id
+        if: always()
         run: |
-          curl --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.actor }}/' \
+          curl -X PATCH --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.actor }}/' \
           --header 'X-API-KEY: ${{ secrets.X_API_KEY }}' \
           --form 'action_run_id=${{ github.run_id }}' \
-          --form 'project=${{ secrets.PROJECT_ID }}'
+          --form 'project_id=${{ secrets.PROJECT_ID }}' \
+          --form 'tests_path=${{ github.event.inputs.tests_path }}'

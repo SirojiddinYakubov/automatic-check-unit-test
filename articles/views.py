@@ -15,12 +15,13 @@ from .serializers import (
     ArticleDetailSerializer, TopicFollowSerializer, CommentSerializer,
     FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
     ReadingHistorySerializer, RecommendationSerializer, AuthorFollowSerializer,
-    NotificationSerializer, NotificationUpdateSerializer, ReportSerializer,
-    FAQSerializer)
+    NotificationSerializer, ReportSerializer, FAQSerializer)
 from users.serializers import UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ArticleFilter, SearchFilter
 from rest_framework.decorators import action
+from django.utils import timezone
+from django.db import models
 from typing import Dict, Any
 
 User = get_user_model()
@@ -70,7 +71,7 @@ def default_response(*args: Any) -> Dict[int, Any]:
     destroy=extend_schema(
         summary="Delete an article",
         responses=default_response(
-            (204, None), 400, 404
+            (204, None), 400, 403, 404
         )
     )
 )
@@ -118,11 +119,20 @@ class ArticlesView(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.author == request.user or request.user.is_superuser:
+            instance.status = ArticleStatus.TRASH
+            instance.save(update_fields=['status'])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise exceptions.PermissionDenied()
+
     @extend_schema(
         summary="Archive an article",
         description="Set the status of the article to 'archive'.",
         responses=default_response(
-            (204, None), 400, 404
+            200, 400, 404
         ),
         tags=['articles']
     )
@@ -190,7 +200,14 @@ class UserPinnedArticles(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return Article.objects.filter(pins__user=user)
+
+        queryset = Article.objects.filter(author=user)
+        pin_subquery = Pin.objects.filter(article=models.OuterRef('pk'), user=user)
+        queryset = queryset.annotate(
+            is_pinned=models.Exists(pin_subquery)
+        )
+        queryset = queryset.order_by('-is_pinned', '-created_at')
+        return queryset
 
 
 @extend_schema_view(
@@ -198,7 +215,7 @@ class UserPinnedArticles(generics.ListAPIView):
         summary="Follow or unfollow a topic",
         request=TopicFollowSerializer,
         responses=default_response(
-            201, 400, 404
+            201, (204, None), 400, 404
         )
     )
 )
@@ -221,7 +238,7 @@ class TopicFollowView(APIView):
             return Response({"detail": _("Siz '{topic_name}' mavzusini kuzatyapsiz.".format(topic_name=topic.name))}, status=status.HTTP_201_CREATED)
         else:
             topic_follow.delete()
-            return Response({"detail": _("Siz '{topic_name}' mavzusini kuzatishni bekor qildingiz.".format(topic_name=topic.name))}, status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema_view(
@@ -478,7 +495,7 @@ class FollowersListView(generics.ListAPIView):
     serializer_class = UserSerializer
 
     def get_queryset(self):
-        user_id = self.kwargs['user_id']
+        user_id = self.request.user.id
         return User.objects.filter(following__followee_id=user_id, is_active=True)
 
 
@@ -496,7 +513,7 @@ class FollowingListView(generics.ListAPIView):
     serializer_class = UserSerializer
 
     def get_queryset(self):
-        user_id = self.kwargs['user_id']
+        user_id = self.request.user.id
         return User.objects.filter(followers__follower_id=user_id, is_active=True)
 
 
@@ -505,7 +522,7 @@ class FollowingListView(generics.ListAPIView):
         summary="Recommend More Articles",
         request=RecommendationSerializer,
         responses=default_response(
-            (201, None), 400, 401, 404
+            (204, None), 400, 401, 404
         )
     )
 )
@@ -539,7 +556,7 @@ class RecommendationView(generics.GenericAPIView):
                 recommendation.more.remove(less_topic)
             recommendation.less.add(less_topic)
 
-        return Response(status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema_view(
@@ -559,9 +576,9 @@ class RecommendationView(generics.GenericAPIView):
     ),
     partial_update=extend_schema(
         summary="Update user notifications",
-        request=NotificationUpdateSerializer,
+        request=None,
         responses=default_response(
-            (200, NotificationSerializer), 400, 401, 404
+            (204, None), 400, 401, 404
         )
     )
 )
@@ -574,34 +591,46 @@ class UserNotificationView(viewsets.ModelViewSet):
         return Notification.objects.filter(user=self.request.user, read_at__isnull=True)
 
 
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.read_at = timezone.now()
+        instance.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 @extend_schema_view(
     post=extend_schema(
-        summary="Report topic",
-        request=ReportSerializer,
+        summary="Report article",
+        request=None,
         responses=default_response(
             200, 201, 400, 401, 404
         )
     )
 )
-class ReportTopicView(APIView):
+class ReportArticleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ReportSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
         user = request.user
-        topic_id = serializer.validated_data['topic'].id
-        topic = get_object_or_404(Topic, id=topic_id, is_active=True)
+        article_id = kwargs.get('id')
 
-        report, is_created = Report.objects.get_or_create(
-            user=user, topic=topic)
+        article = get_object_or_404(Article, id=article_id, status=ArticleStatus.PUBLISH)
 
-        if is_created:
-            return Response({"status": _("Mavzu muvaffaqiyatli xabar qilindi.")}, status=status.HTTP_201_CREATED)
-        else:
-            return Response({"status": _("Mavzu allaqachon xabar qilingan.")}, status=status.HTTP_200_OK)
+        if article.reports.filter(user=user).exists():
+            raise exceptions.ValidationError(_('Ushbu maqola allaqachon xabar qilingan.'))
 
+        report = Report.objects.create(article=article)
+        report.user.add(user)
+
+        unique_reporters_count = article.reports.values('user').distinct().count()
+
+        if unique_reporters_count > 3:
+            article.status = ArticleStatus.TRASH
+            article.save(update_fields=['status'])
+            return Response({"detail": _("Maqola bir nechta xabarlar tufayli axlatga tashlandi.")}, status=status.HTTP_200_OK)
+
+        return Response({"detail": _("Hisobot muvaffaqiyatli topshirildi.")}, status=status.HTTP_201_CREATED)
 
 @extend_schema_view(
     get=extend_schema(

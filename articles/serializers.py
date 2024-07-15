@@ -31,19 +31,26 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'article', 'user', 'parent',
-                  'content', 'created_at', 'replies']
+        fields = ['id', 'article', 'user', 'parent', 'content', 'created_at', 'replies']
 
     @extend_schema_field(ReplySerializer(many=True))
     def get_replies(self, obj):
-        if obj.parent is None:
+        if obj.parent_id:
+            return []  # Return an empty list if there are no replies for a reply
+        else:
             replies = Comment.objects.filter(parent=obj)
             return ReplySerializer(replies, many=True).data
-        return []
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.parent_id:
+            representation['replies'] = []  # Ensure replies are always present for parent comments
+        return representation
 
     def create(self, validated_data):
         user = self.context['request'].user
         return Comment.objects.create(user=user, **validated_data)
+
 
 
 class ClapSerializer(serializers.ModelSerializer):
@@ -166,16 +173,10 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = ['id', 'message', 'read_at', 'created_at']
 
 
-class NotificationUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Notification
-        fields = ['id', 'read_at']
-
-
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
-        fields = ['topic']
+        fields = ['article']
 
 
 class FAQSerializer(serializers.ModelSerializer):

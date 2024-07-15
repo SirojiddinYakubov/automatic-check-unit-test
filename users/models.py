@@ -60,10 +60,11 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         """ This method returns the full name of the user"""
-        if self.full_name:
-            return self.full_name
-        else:
-            return self.email or self.username
+        # if self.full_name and self.full_name is not None:
+        #     return self.full_name
+        # else:
+        #     return self.email or self.username
+        return self.username
 
     @property
     def full_name(self):

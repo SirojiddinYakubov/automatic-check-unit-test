@@ -90,9 +90,8 @@ class ArticleDetailSerializer(serializers.ModelSerializer):
 class ArticleCreateSerializer(serializers.ModelSerializer):
     author_id = serializers.IntegerField(write_only=True)
     author = UserSerializer(read_only=True)
-    topic_ids = serializers.ListField(
-        child=serializers.PrimaryKeyRelatedField(queryset=Topic.objects.filter(is_active=True)),
-        write_only=True
+    topic_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Topic.objects.filter(is_active=True), many=True, write_only=True
     )
     topics = TopicSerializer(many=True, read_only=True)
 

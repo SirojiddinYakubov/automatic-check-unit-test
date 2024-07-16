@@ -18,39 +18,29 @@ class TopicSerializer(serializers.ModelSerializer):
 
 
 class ReplySerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = UserSerializer()
 
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'content', 'created_at']
+        fields = ['id', 'article', 'user', 'parent', 'content', 'created_at']
 
 
 class CommentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    replies = serializers.SerializerMethodField()
+    replies = ReplySerializer(many=True, read_only=True)
 
     class Meta:
         model = Comment
         fields = ['id', 'article', 'user', 'parent', 'content', 'created_at', 'replies']
 
-    @extend_schema_field(ReplySerializer(many=True))
     def get_replies(self, obj):
-        if obj.parent_id:
-            return []  # Return an empty list if there are no replies for a reply
-        else:
-            replies = Comment.objects.filter(parent=obj)
-            return ReplySerializer(replies, many=True).data
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        if instance.parent_id:
-            representation['replies'] = []  # Ensure replies are always present for parent comments
-        return representation
+        if obj.replies.exists():
+            return CommentSerializer(obj.replies.all(), many=True).data
+        return []
 
     def create(self, validated_data):
         user = self.context['request'].user
         return Comment.objects.create(user=user, **validated_data)
-
 
 
 class ClapSerializer(serializers.ModelSerializer):
@@ -86,13 +76,17 @@ class ArticleListSerializer(serializers.ModelSerializer):
 class ArticleDetailSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     topics = TopicSerializer(many=True)
-    comments = CommentSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     claps = ClapSerializer(many=True)
 
     class Meta:
         model = Article
         fields = ['id', 'author', 'title', 'summary', 'content', 'status', 'thumbnail', 'views_count', 'reads_count',
                   'created_at', 'updated_at', 'topics', 'comments', 'claps']
+
+    def get_comments(self, obj):
+        comments = Comment.objects.filter(article=obj, parent=None)
+        return CommentSerializer(comments, many=True).data
 
 
 class ArticleCreateSerializer(serializers.ModelSerializer):

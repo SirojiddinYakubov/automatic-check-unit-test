@@ -25,7 +25,7 @@ urlpatterns = [
          name='popular-authors'),
     path('favorites/', UserFavoritesListView.as_view(),
          name='user-favorites'),
-    path('reading-history/',
+    path('articles/history/',
          ReadingHistoryView.as_view(), name='reading-history'),
     path('followers/',
          FollowersListView.as_view(), name='followers'),

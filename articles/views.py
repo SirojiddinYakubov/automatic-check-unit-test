@@ -462,7 +462,7 @@ class ClapView(generics.GenericAPIView):
 
 @extend_schema_view(
     post=extend_schema(
-        summary="Article Reads",
+        summary="Increment Article Reads Count",
         request=None,
         responses=default_response(
             200, 400, 401, 404
@@ -579,20 +579,23 @@ class RecommendationView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = request.user
-        more_topic_id = serializer.validated_data.get('more_topic_id')
-        less_topic_id = serializer.validated_data.get('less_topic_id')
+        more_article_id = serializer.validated_data.get('more_article_id')
+        less_article_id = serializer.validated_data.get('less_article_id')
 
         recommendation, created = Recommendation.objects.get_or_create(user=user)
 
-        if more_topic_id:
-            more_topic = get_object_or_404(Topic, id=more_topic_id, is_active=True)
-            if recommendation.less.filter(id=more_topic_id).exists():
-                recommendation.less.remove(more_topic)
-            recommendation.more.add(more_topic)
+        if more_article_id:
+            article = get_object_or_404(Article, id=more_article_id, status=ArticleStatus.PUBLISH)
+            topics = article.topics.all()
 
-        if less_topic_id:
-            less_topic = get_object_or_404(Topic, id=less_topic_id, is_active=True)
-            if recommendation.more.filter(id=less_topic_id).exists():
+            for topic in topics:
+                if recommendation.less.filter(id=topic.id).exists():
+                    recommendation.less.remove(topic)
+                recommendation.more.add(topic)
+
+        if less_article_id:
+            less_topic = get_object_or_404(Topic, id=less_article_id, is_active=True)
+            if recommendation.more.filter(id=less_topic.id).exists():
                 recommendation.more.remove(less_topic)
             recommendation.less.add(less_topic)
 

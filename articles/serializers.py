@@ -154,8 +154,8 @@ class ReadingHistorySerializer(serializers.ModelSerializer):
 
 
 class RecommendationSerializer(serializers.Serializer):
-    more_topic_id = serializers.IntegerField(required=False)
-    less_topic_id = serializers.IntegerField(required=False)
+    more_article_id = serializers.IntegerField(required=False)
+    less_article_id = serializers.IntegerField(required=False)
 
 
 class PinRequestSerializer(serializers.Serializer):

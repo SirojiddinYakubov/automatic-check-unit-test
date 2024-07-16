@@ -75,7 +75,7 @@ jobs:
       - name: Send run_id
         if: always()
         run: |
-          curl -X PATCH --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.actor }}/' \
+          curl -X PUT --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.actor }}/' \
           --header 'X-API-KEY: ${{ secrets.X_API_KEY }}' \
           --form 'action_run_id=${{ github.run_id }}' \
           --form 'project_id=${{ secrets.PROJECT_ID }}' \

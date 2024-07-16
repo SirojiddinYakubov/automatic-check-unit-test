@@ -15,7 +15,8 @@ from .serializers import (
     ArticleDetailSerializer, TopicFollowSerializer, CommentSerializer,
     FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
     ReadingHistorySerializer, RecommendationSerializer, AuthorFollowSerializer,
-    NotificationSerializer, ReportSerializer, FAQSerializer)
+    NotificationSerializer, ReportSerializer, FAQSerializer,
+    ArticleDetailCommentsSerializer, CommentResponseSerializer)
 from users.serializers import UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ArticleFilter, SearchFilter
@@ -280,13 +281,6 @@ class AuthorFollowView(APIView):
 
 
 @extend_schema_view(
-    create=extend_schema(
-        summary="Create a comment",
-        request=CommentSerializer,
-        responses=default_response(
-            (201, CommentSerializer), 400, 401, 404
-        )
-    ),
     partial_update=extend_schema(
         summary="Update comment",
         request=CommentSerializer,
@@ -302,11 +296,57 @@ class AuthorFollowView(APIView):
         )
     )
 )
-class CommentView(viewsets.ModelViewSet):
+class CommentsView(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['post', 'patch', 'delete']
+    http_method_names = ['patch', 'delete']
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Create a comment",
+        request=CommentSerializer,
+        responses=default_response(
+            (201, CommentSerializer),
+            400,
+            401,
+            404
+        )
+    )
+)
+class CreateCommentsView(generics.CreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CommentSerializer
+
+    def get_queryset(self):
+        return Article.objects.filter(status=ArticleStatus.PUBLISH)
+
+    def perform_create(self, serializer):
+        article_id = self.kwargs.get('id')
+        article = generics.get_object_or_404(Article, id=article_id)
+        serializer.save(article=article, user=self.request.user)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Article detail comments",
+        request=None,
+        responses=default_response(
+            (200, CommentResponseSerializer),
+            400,
+            401,
+            404
+        )
+    )
+)
+class ArticleDetailCommentsView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ArticleDetailCommentsSerializer
+
+    def get_queryset(self):
+        article_id = self.kwargs.get('id')
+        return Article.objects.filter(id=article_id)
 
 
 @extend_schema_view(
@@ -397,9 +437,9 @@ class ClapView(generics.GenericAPIView):
     def get_queryset(self):
         return Article.objects.filter(status=ArticleStatus.PUBLISH)
 
-    def post(self, request, article_id):
+    def post(self, request, id):
         user = request.user
-        article = get_object_or_404(self.get_queryset(), id=article_id)
+        article = get_object_or_404(self.get_queryset(), id=id)
 
         clap, is_created = Clap.objects.get_or_create(user=user, article=article)
         clap.count = min(clap.count + 1, 50)
@@ -432,9 +472,9 @@ class ClapView(generics.GenericAPIView):
 class ArticleReadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request, article_id):
+    def post(self, request, id):
         try:
-            instance = Article.objects.get(id=article_id)
+            instance = Article.objects.get(id=id)
             instance.reads_count += 1
             instance.save(update_fields=['reads_count'])
             return Response({"detail": _("Maqolani o'qish soni ortdi.")}, status=status.HTTP_200_OK)

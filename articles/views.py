@@ -14,7 +14,7 @@ from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
     ArticleDetailSerializer, TopicFollowSerializer, CommentSerializer,
     FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
-    ReadingHistorySerializer, RecommendationSerializer, AuthorFollowSerializer,
+    ReadingHistorySerializer, RecommendationSerializer,
     NotificationSerializer, ReportSerializer, FAQSerializer,
     ArticleDetailCommentsSerializer, CommentResponseSerializer)
 from users.serializers import UserSerializer
@@ -120,6 +120,9 @@ class ArticlesView(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if instance.author == request.user or request.user.is_superuser:
@@ -140,9 +143,10 @@ class ArticlesView(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def archive(self, request, pk=None):
         article = self.get_object()
-        article.status = ArticleStatus.ARCHIVE
-        article.save(update_fields=['status'])
-        return Response({"detail": _("Maqola arxivlandi.")}, status=status.HTTP_200_OK)
+        if article.author == request.user or request.user.is_superuser:
+            article.status = ArticleStatus.ARCHIVE
+            article.save(update_fields=['status'])
+            return Response({"detail": _("Maqola arxivlandi.")}, status=status.HTTP_200_OK)
 
     @extend_schema(
         summary="Pin an article",
@@ -187,7 +191,7 @@ class ArticlesView(viewsets.ModelViewSet):
 
 
 @extend_schema(
-    summary="Get user-pinned articles",
+    summary="Get user articles",
     description="Retrieve a list of articles pinned by the authenticated user.",
     request=None,
     responses=default_response(
@@ -243,41 +247,58 @@ class TopicFollowView(APIView):
 
 
 @extend_schema_view(
-    patch=extend_schema(
+    post=extend_schema(
         summary="Follow or unfollow a author",
-        request=AuthorFollowSerializer,
+        request=None,
         responses=default_response(
-            (204, None), 201, 400, 404
+         201, 200, 400, 404
         )
-    )
+    ),
+    delete=extend_schema(
+        summary="Follow or unfollow a author",
+        request=None,
+        responses=default_response(
+        (204, None), 400, 404
+        )
+        )
 )
 class AuthorFollowView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = AuthorFollowSerializer
 
     def create_notification(self, user, message):
         Notification.objects.create(user=user, message=message)
 
-    def patch(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
+    def post(self, request, *args, **kwargs):
+        author_id = self.kwargs.get('id')
+
         follower = request.user
-        author_id = serializer.validated_data['author_id']
         followee = get_object_or_404(User, id=author_id)
 
         try:
-            follow = Follow.objects.get(
-                follower=follower, followee=followee)
+            follow, created = Follow.objects.get_or_create(follower=follower, followee=followee)
+            if created:
+                message_followee = _("{} sizga follow qildi.").format(follower.username)
+                self.create_notification(followee, message_followee)
+                return Response({'detail': _("Mofaqqiyatli follow qilindi.")}, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'detail': _("Siz allaqachon ushbu foydalanuvchini kuzatyapsiz.")},
+                                status=status.HTTP_200_OK)
+        except Exception as e:
+            raise exceptions.APIException(_("Kutilmagan xato ro'y berdi: {}").format(str(e)))
+
+    def delete(self, request, *args, **kwargs):
+
+        author_id = self.kwargs.get('id')
+
+        follower = request.user
+        followee = get_object_or_404(User, id=author_id)
+
+        try:
+            follow = Follow.objects.get(follower=follower, followee=followee)
             follow.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-        except Exception:
-            Follow.objects.create(follower=follower, followee=followee)
-
-            message_followee = _("{} sizga follow qildi.").format(
-                follower.username)
-            self.create_notification(followee, message_followee)
-
-            return Response({'detail': _("Mofaqqiyatli follow qilindi.")}, status=status.HTTP_201_CREATED)
+        except Follow.DoesNotExist:
+            raise exceptions.NotFound(detail=_("Follow relationship not found"))
 
 
 @extend_schema_view(
@@ -448,9 +469,9 @@ class ClapView(generics.GenericAPIView):
         response_serializer = self.serializer_class(clap)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
-    def delete(self, request, article_id):
+    def delete(self, request, id):
         user = request.user
-        article = get_object_or_404(self.get_queryset(), id=article_id)
+        article = get_object_or_404(self.get_queryset(), id=id)
 
         try:
             clap = Clap.objects.get(user=user, article=article)
@@ -484,7 +505,7 @@ class ArticleReadView(APIView):
 
 @extend_schema_view(
     get=extend_schema(
-        summary="Popular Authors",
+        summary="Popular Authors recommendations with reads count",
         request=None,
         responses=default_response(
             (200, UserSerializer), 400, 401, 404
@@ -582,7 +603,7 @@ class RecommendationView(generics.GenericAPIView):
         more_article_id = serializer.validated_data.get('more_article_id')
         less_article_id = serializer.validated_data.get('less_article_id')
 
-        recommendation, created = Recommendation.objects.get_or_create(user=user)
+        recommendation, is_created = Recommendation.objects.get_or_create(user=user)
 
         if more_article_id:
             article = get_object_or_404(Article, id=more_article_id, status=ArticleStatus.PUBLISH)
@@ -594,10 +615,13 @@ class RecommendationView(generics.GenericAPIView):
                 recommendation.more.add(topic)
 
         if less_article_id:
-            less_topic = get_object_or_404(Topic, id=less_article_id, is_active=True)
-            if recommendation.more.filter(id=less_topic.id).exists():
-                recommendation.more.remove(less_topic)
-            recommendation.less.add(less_topic)
+            article = get_object_or_404(Article, id=less_article_id, status=ArticleStatus.PUBLISH)
+            topics = article.topics.all()
+
+            for topic in topics:
+                if recommendation.more.filter(id=topic.id).exists():
+                    recommendation.more.remove(topic)
+                recommendation.less.add(topic)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -661,7 +685,7 @@ class ReportArticleView(APIView):
         article = get_object_or_404(Article, id=article_id, status=ArticleStatus.PUBLISH)
 
         if article.reports.filter(user=user).exists():
-            raise exceptions.ValidationError(_('Ushbu maqola allaqachon xabar qilingan.'))
+            raise exceptions.ValidationError(_('Ushbu maqola allaqachon shikoyat qilingan.'))
 
         report = Report.objects.create(article=article)
         report.user.add(user)
@@ -671,9 +695,9 @@ class ReportArticleView(APIView):
         if unique_reporters_count > 3:
             article.status = ArticleStatus.TRASH
             article.save(update_fields=['status'])
-            return Response({"detail": _("Maqola bir nechta xabarlar tufayli axlatga tashlandi.")}, status=status.HTTP_200_OK)
+            return Response({"detail": _("Maqola bir nechta shikoyatlar tufayli olib tashlandi.")}, status=status.HTTP_200_OK)
 
-        return Response({"detail": _("Hisobot muvaffaqiyatli topshirildi.")}, status=status.HTTP_201_CREATED)
+        return Response({"detail": _("Shikoyat yuborildi.")}, status=status.HTTP_201_CREATED)
 
 @extend_schema_view(
     get=extend_schema(

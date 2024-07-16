@@ -5,7 +5,7 @@ on:
       tests_path:
         description: 'Tests path'
         required: false
-        default: 'tests'
+        default: ''
   push:
     branches: [ "main" ]
 

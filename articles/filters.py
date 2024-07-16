@@ -24,8 +24,11 @@ class ArticleFilter(django_filters.FilterSet):
             more_topics = recommendations.values_list('more', flat=True)
             less_topics = recommendations.values_list('less', flat=True)
 
-            if more_topics.exists():
-                queryset = queryset.filter(topics__in=more_topics)
+            followed_topics = user.followed_topics.values_list('id', flat=True)
+
+            if more_topics.exists() or followed_topics.exists():
+                queryset = queryset.filter(Q(topics__in=more_topics) | Q(topics__in=followed_topics))
+
             if less_topics.exists():
                 queryset = queryset.exclude(topics__in=less_topics)
         return queryset

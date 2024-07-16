@@ -39,6 +39,7 @@ class UserSerializer(serializers.ModelSerializer):
             middle_name=validated_data.get('middle_name', '')
         )
         user.set_password(validated_data['password'])
+        user.avatar = validated_data.get('avatar', '')
         user.save()
         return user
 

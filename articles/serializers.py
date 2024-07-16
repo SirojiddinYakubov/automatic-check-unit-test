@@ -97,7 +97,6 @@ class ArticleDetailCommentsSerializer(serializers.ModelSerializer):
 
 
 class ArticleCreateSerializer(serializers.ModelSerializer):
-    author_id = serializers.IntegerField(write_only=True)
     author = UserSerializer(read_only=True)
     topic_ids = serializers.PrimaryKeyRelatedField(
         queryset=Topic.objects.filter(is_active=True), many=True, write_only=True
@@ -106,7 +105,7 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Article
-        fields = ['id', 'author_id', 'author', 'title', 'summary', 'content',
+        fields = ['id', 'author', 'title', 'summary', 'content',
                   'status', 'thumbnail', 'topic_ids', 'topics', 'created_at', 'updated_at']
         read_only_fields = ['id', 'status', 'created_at', 'updated_at']
 
@@ -127,10 +126,6 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
 
 class TopicFollowSerializer(serializers.Serializer):
     topic_id = serializers.IntegerField()
-
-
-class AuthorFollowSerializer(serializers.Serializer):
-    author_id = serializers.IntegerField()
 
 
 class FavoriteSerializer(serializers.ModelSerializer):

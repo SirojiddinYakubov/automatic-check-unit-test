@@ -154,10 +154,10 @@ class Recommendation(BaseModel):
         User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="recommendations"
     )
     more = models.ManyToManyField(
-        Topic, limit_choices_to={'is_active': True}, related_name="more_recommended"
+        Topic, limit_choices_to={'is_active': True}, related_name="more_recommended", blank=True
     )
     less = models.ManyToManyField(
-        Topic, limit_choices_to={'is_active': True}, related_name="less_recommended"
+        Topic, limit_choices_to={'is_active': True}, related_name="less_recommended", blank=True
     )
 
     class Meta:
@@ -222,10 +222,10 @@ class TopicFollow(BaseModel):
 
 
 class Report(BaseModel):
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, limit_choices_to={'is_active': True}, related_name="reports")
-    topic = models.ForeignKey(
-        Topic, limit_choices_to={'is_active': True}, on_delete=models.CASCADE, related_name="reports")
+    user = models.ManyToManyField(
+        User, limit_choices_to={'is_active': True}, related_name="reports", blank=True)
+    article = models.ForeignKey(
+        Article, on_delete=models.CASCADE, related_name="reports")
 
     class Meta:
         db_table = "report"

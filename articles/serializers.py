@@ -17,33 +17,29 @@ class TopicSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'is_active']
 
 
-class ReplySerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Comment
-        fields = ['id', 'user', 'content', 'created_at']
-
-
 class CommentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     replies = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['id', 'article', 'user', 'parent',
-                  'content', 'created_at', 'replies']
+        fields = ['id', 'article', 'user', 'parent', 'content', 'created_at', 'replies']
+        read_only_fields = ['id', 'article', 'created_at']
 
-    @extend_schema_field(ReplySerializer(many=True))
     def get_replies(self, obj):
-        if obj.parent is None:
-            replies = Comment.objects.filter(parent=obj)
-            return ReplySerializer(replies, many=True).data
+        if obj.replies.exists():
+            return CommentSerializer(obj.replies.all(), many=True).data
         return []
 
-    def create(self, validated_data):
-        user = self.context['request'].user
-        return Comment.objects.create(user=user, **validated_data)
+
+class CommentResponseSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    replies = CommentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'article', 'user', 'parent', 'content', 'created_at', 'replies']
+        read_only_fields = ['id', 'article', 'user', 'parent', 'content', 'created_at', 'replies']
 
 
 class ClapSerializer(serializers.ModelSerializer):
@@ -79,13 +75,25 @@ class ArticleListSerializer(serializers.ModelSerializer):
 class ArticleDetailSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     topics = TopicSerializer(many=True)
-    comments = CommentSerializer(many=True, read_only=True)
     claps = ClapSerializer(many=True)
 
     class Meta:
         model = Article
         fields = ['id', 'author', 'title', 'summary', 'content', 'status', 'thumbnail', 'views_count', 'reads_count',
-                  'created_at', 'updated_at', 'topics', 'comments', 'claps']
+                  'created_at', 'updated_at', 'topics', 'claps']
+
+
+class ArticleDetailCommentsSerializer(serializers.ModelSerializer):
+    comments = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Article
+        fields = ['comments']
+
+    @extend_schema_field(serializers.CharField)
+    def get_comments(self, obj: Article) -> list[dict]:
+        comments = Comment.objects.filter(article=obj, parent=None)
+        return CommentSerializer(comments, many=True).data
 
 
 class ArticleCreateSerializer(serializers.ModelSerializer):
@@ -166,16 +174,10 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = ['id', 'message', 'read_at', 'created_at']
 
 
-class NotificationUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Notification
-        fields = ['id', 'read_at']
-
-
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
-        fields = ['topic']
+        fields = ['article']
 
 
 class FAQSerializer(serializers.ModelSerializer):

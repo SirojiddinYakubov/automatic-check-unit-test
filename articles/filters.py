@@ -4,13 +4,13 @@ from django.db.models import Q
 from django.db.models import Count
 
 class ArticleFilter(django_filters.FilterSet):
-    top = django_filters.NumberFilter(method='filter_by_top')
-    topic = django_filters.NumberFilter(method='filter_by_topic')
+    get_top_articles = django_filters.NumberFilter(method='filter_by_top')
+    topic_id = django_filters.NumberFilter(method='filter_by_topic')
     is_recommend = django_filters.BooleanFilter(method='filter_by_recommend')
 
     class Meta:
         model = Article
-        fields = ['top', 'topic', 'is_recommend']
+        fields = ['get_top_articles', 'topic_id', 'is_recommend']
 
     def filter_by_top(self, queryset, name, value):
         if value:

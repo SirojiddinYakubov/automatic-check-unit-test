@@ -189,6 +189,25 @@ class ArticlesView(viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+        summary="Increment Article Reads Count",
+        request=None,
+        responses=default_response(
+            200, 400, 401, 404
+        ),
+        tags=['articles']
+    )
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def read(self, request, pk=None):
+        article = self.get_object()
+
+        try:
+            article.reads_count += 1
+            article.save(update_fields=['reads_count'])
+            return Response({"detail": _("Maqolani o'qish soni ortdi.")}, status=status.HTTP_200_OK)
+        except Article.DoesNotExist:
+            raise exceptions.NotFound
+
 
 @extend_schema(
     summary="Get user articles",
@@ -426,7 +445,6 @@ class SearchView(generics.ListAPIView):
 class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
-    serializer_class = ArticleListSerializer
 
     def post(self, request, *args, **kwargs):
         article = self.get_object()
@@ -435,7 +453,7 @@ class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
         if is_created:
             return Response({'detail': _("Maqola sevimlilarga qo'shildi.")}, status=status.HTTP_201_CREATED)
         else:
-            raise exceptions.ErrorDetail
+            return Response({'detail': _("Maqola sevimlilarga allaqachon qo'shilgan.")}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, *args, **kwargs):
         article = self.get_object()
@@ -503,28 +521,6 @@ class ClapView(generics.GenericAPIView):
             clap.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Clap.DoesNotExist:
-            raise exceptions.NotFound
-
-
-@extend_schema_view(
-    post=extend_schema(
-        summary="Increment Article Reads Count",
-        request=None,
-        responses=default_response(
-            200, 400, 401, 404
-        )
-    )
-)
-class ArticleReadView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, id):
-        try:
-            instance = Article.objects.get(id=id)
-            instance.reads_count += 1
-            instance.save(update_fields=['reads_count'])
-            return Response({"detail": _("Maqolani o'qish soni ortdi.")}, status=status.HTTP_200_OK)
-        except Article.DoesNotExist:
             raise exceptions.NotFound
 
 

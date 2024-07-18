@@ -124,10 +124,6 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class TopicFollowSerializer(serializers.Serializer):
-    topic_id = serializers.IntegerField()
-
-
 class FavoriteSerializer(serializers.ModelSerializer):
     article = ArticleListSerializer()
 

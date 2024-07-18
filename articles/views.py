@@ -12,7 +12,7 @@ from .models import (
     Recommendation, Pin, Notification, Report, FAQ)
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
-    ArticleDetailSerializer, TopicFollowSerializer, CommentSerializer,
+    ArticleDetailSerializer, CommentSerializer,
     FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
     ReadingHistorySerializer, RecommendationSerializer,
     NotificationSerializer, ReportSerializer, FAQSerializer,
@@ -189,6 +189,25 @@ class ArticlesView(viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+        summary="Increment Article Reads Count",
+        request=None,
+        responses=default_response(
+            200, 400, 401, 404
+        ),
+        tags=['articles']
+    )
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def read(self, request, pk=None):
+        article = self.get_object()
+
+        try:
+            article.reads_count += 1
+            article.save(update_fields=['reads_count'])
+            return Response({"detail": _("Maqolani o'qish soni ortdi.")}, status=status.HTTP_200_OK)
+        except Article.DoesNotExist:
+            raise exceptions.NotFound
+
 
 @extend_schema(
     summary="Get user articles",
@@ -216,23 +235,27 @@ class UserPinnedArticles(generics.ListAPIView):
 
 
 @extend_schema_view(
-    patch=extend_schema(
-        summary="Follow or unfollow a topic",
-        request=TopicFollowSerializer,
+    post=extend_schema(
+        summary="Follow a topic",
+        request=None,
         responses=default_response(
-            201, (204, None), 400, 404
+            201, 200, 400, 404
+        )
+    ),
+    delete=extend_schema(
+        summary="Unfollow a topic",
+        request=None,
+        responses=default_response(
+            200, (204, None), 400, 404
         )
     )
 )
 class TopicFollowView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = TopicFollowSerializer
 
-    def patch(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
+    def post(self, request, *args, **kwargs):
+        topic_id = self.kwargs.get('id')
         user = request.user
-        topic_id = serializer.validated_data['topic_id']
 
         topic = get_object_or_404(Topic, id=topic_id, is_active=True)
 
@@ -240,22 +263,43 @@ class TopicFollowView(APIView):
             user=user, topic=topic)
 
         if is_created:
-            return Response({"detail": _("Siz '{topic_name}' mavzusini kuzatyapsiz.".format(topic_name=topic.name))}, status=status.HTTP_201_CREATED)
+            return Response(
+                {"detail": _("Siz '{topic_name}' mavzusini kuzatyapsiz.").format(topic_name=topic.name)},
+                status=status.HTTP_201_CREATED
+            )
         else:
+            return Response(
+                {"detail": _("Siz allaqachon '{topic_name}' mavzusini kuzatyapsiz.").format(topic_name=topic.name)},
+                status=status.HTTP_200_OK
+            )
+
+    def delete(self, request, *args, **kwargs):
+        topic_id = self.kwargs.get('id')
+        user = request.user
+
+        topic = get_object_or_404(Topic, id=topic_id, is_active=True)
+
+        try:
+            topic_follow = TopicFollow.objects.get(user=user, topic=topic)
             topic_follow.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+        except TopicFollow.DoesNotExist:
+            return Response(
+                {"detail": _("Siz '{topic_name}' mavzusini kuzatmaysiz.").format(topic_name=topic.name)},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 @extend_schema_view(
     post=extend_schema(
-        summary="Follow or unfollow a author",
+        summary="Follow a author",
         request=None,
         responses=default_response(
          201, 200, 400, 404
         )
     ),
     delete=extend_schema(
-        summary="Follow or unfollow a author",
+        summary="Unfollow a author",
         request=None,
         responses=default_response(
         (204, None), 400, 404
@@ -275,8 +319,8 @@ class AuthorFollowView(APIView):
         followee = get_object_or_404(User, id=author_id)
 
         try:
-            follow, created = Follow.objects.get_or_create(follower=follower, followee=followee)
-            if created:
+            follow, is_created = Follow.objects.get_or_create(follower=follower, followee=followee)
+            if is_created:
                 message_followee = _("{} sizga follow qildi.").format(follower.username)
                 self.create_notification(followee, message_followee)
                 return Response({'detail': _("Mofaqqiyatli follow qilindi.")}, status=status.HTTP_201_CREATED)
@@ -401,7 +445,6 @@ class SearchView(generics.ListAPIView):
 class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
-    serializer_class = ArticleListSerializer
 
     def post(self, request, *args, **kwargs):
         article = self.get_object()
@@ -410,7 +453,7 @@ class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
         if is_created:
             return Response({'detail': _("Maqola sevimlilarga qo'shildi.")}, status=status.HTTP_201_CREATED)
         else:
-            raise exceptions.ErrorDetail
+            return Response({'detail': _("Maqola sevimlilarga allaqachon qo'shilgan.")}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, *args, **kwargs):
         article = self.get_object()
@@ -478,28 +521,6 @@ class ClapView(generics.GenericAPIView):
             clap.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Clap.DoesNotExist:
-            raise exceptions.NotFound
-
-
-@extend_schema_view(
-    post=extend_schema(
-        summary="Increment Article Reads Count",
-        request=None,
-        responses=default_response(
-            200, 400, 401, 404
-        )
-    )
-)
-class ArticleReadView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, id):
-        try:
-            instance = Article.objects.get(id=id)
-            instance.reads_count += 1
-            instance.save(update_fields=['reads_count'])
-            return Response({"detail": _("Maqolani o'qish soni ortdi.")}, status=status.HTTP_200_OK)
-        except Article.DoesNotExist:
             raise exceptions.NotFound
 
 

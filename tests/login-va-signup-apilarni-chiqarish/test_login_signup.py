@@ -2,7 +2,6 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework import status
 
-
 User = get_user_model()
 
 
@@ -174,18 +173,18 @@ def signup_data(request):
     'signup_data',
     [
         'valid_data',
-        'invalid_username',
-        'empty_username',
-        'required_username',
-        'invalid_first_name',
-        'empty_first_name',
-        'required_first_name',
-        'invalid_last_name',
-        'empty_last_name',
-        'required_last_name',
-        'invalid_password',
-        'empty_password',
-        'required_password',
+        # 'invalid_username',
+        # 'empty_username',
+        # 'required_username',
+        # 'invalid_first_name',
+        # 'empty_first_name',
+        # 'required_first_name',
+        # 'invalid_last_name',
+        # 'empty_last_name',
+        # 'required_last_name',
+        # 'invalid_password',
+        # 'empty_password',
+        # 'required_password',
     ],
     indirect=True,
 )

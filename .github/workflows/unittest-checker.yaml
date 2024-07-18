@@ -70,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unittest-checker-artifact
-          path: ./reports/unittest-checker-report.json
+          path: forked-repo/reports/unittest-checker-report.json
 
       - name: Send run_id
         if: always()

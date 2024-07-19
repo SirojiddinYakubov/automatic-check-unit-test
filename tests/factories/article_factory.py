@@ -13,7 +13,7 @@ class TopicFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Topic
 
-    id = factory.Faker('pyint', min_value=1, max_value=100)
+    id = factory.Faker('pyint', min_value=1, max_value=1000)
     name = factory.LazyAttribute(lambda _: fake.word())
 
 

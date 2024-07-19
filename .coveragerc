@@ -1,0 +1,2 @@
+[run]
+omit = .deploy,.github,core,locale,logs,static,staticfiles,templates,tests,.env,.env.example,.dockerignore,.gitignore,django.log,docker-compose.yaml,Dockerfile

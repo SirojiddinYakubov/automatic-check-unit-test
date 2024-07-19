@@ -90,21 +90,16 @@ class ArticlesView(viewsets.ModelViewSet):
             return ArticleListSerializer
         if self.action == 'retrieve':
             return ArticleDetailSerializer
-        return None
 
     def get_queryset(self):
-        if getattr(self, "swagger_fake_view", False):
-            return Article.objects.none()
-
         user = self.request.user
         queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
 
-        if user.is_authenticated:
-            recommendations = Recommendation.objects.filter(user=user)
-            less_topics = recommendations.values_list('less', flat=True)
+        recommendations = Recommendation.objects.filter(user=user)
+        less_topics = recommendations.values_list('less', flat=True)
 
-            if less_topics.exists():
-                queryset = queryset.exclude(topics__in=less_topics)
+        if less_topics.exists():
+            queryset = queryset.exclude(topics__in=less_topics)
 
         return queryset.distinct()
 

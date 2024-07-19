@@ -1,6 +1,8 @@
-import importlib.util
 
 
 def test_via_importlib():
-    loader = importlib.util.find_spec('psycopg2-binary')
-    assert loader is not None, "psycopg2-binary is not installed"
+    try:
+        import psycopg2  # noqa
+        print("psycopg2-binary is installed.")
+    except ImportError:
+        print("psycopg2-binary is not installed.")

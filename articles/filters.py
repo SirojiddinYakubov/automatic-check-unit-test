@@ -13,24 +13,22 @@ class ArticleFilter(django_filters.FilterSet):
         fields = ['get_top_articles', 'topic_id', 'is_recommend']
 
     def filter_by_top(self, queryset, name, value):
-        if value:
-            return queryset.order_by('-views_count')[:value]
-        return queryset
+        return queryset.order_by('-views_count')[:value]
 
     def filter_by_recommend(self, queryset, name, value):
         user = self.request.user
-        if value:
-            recommendations = Recommendation.objects.filter(user=user)
-            more_topics = recommendations.values_list('more', flat=True)
-            less_topics = recommendations.values_list('less', flat=True)
+        recommendations = Recommendation.objects.filter(user=user)
+        more_topics = recommendations.values_list('more', flat=True)
+        less_topics = recommendations.values_list('less', flat=True)
 
-            followed_topics = user.followed_topics.values_list('id', flat=True)
+        followed_topics = user.topic_follows.values_list('id', flat=True)
 
-            if more_topics.exists() or followed_topics.exists():
-                queryset = queryset.filter(Q(topics__in=more_topics) | Q(topics__in=followed_topics))
+        if more_topics.exists():
+            queryset = queryset.filter(Q(topics__in=more_topics) | Q(topics__in=followed_topics))
 
-            if less_topics.exists():
-                queryset = queryset.exclude(topics__in=less_topics)
+        if less_topics.exists():
+            queryset = queryset.exclude(topics__in=less_topics)
+
         return queryset
 
     def filter_by_topic(self, queryset, name, value):

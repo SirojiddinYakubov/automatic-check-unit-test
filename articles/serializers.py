@@ -99,7 +99,7 @@ class ArticleDetailCommentsSerializer(serializers.ModelSerializer):
 class ArticleCreateSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     topic_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Topic.objects.filter(is_active=True), many=True, write_only=True
+        queryset=Topic.objects.filter(is_active=True), many=True, write_only=True, required=True
     )
     topics = TopicSerializer(many=True, read_only=True)
 

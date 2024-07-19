@@ -127,7 +127,6 @@ def test_change_password(change_password_data, api_client):
     status_code, user, access, data = change_password_data()
     client = api_client(token=access)
     resp = client.put('/users/password/change/', data, format='json')
-    print("blabla", resp.data)
     assert resp.status_code == status_code
 
     if resp.status_code == status.HTTP_200_OK:

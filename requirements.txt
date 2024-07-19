@@ -3,7 +3,7 @@ attrs==23.2.0
 certifi==2024.6.2
 cfgv==3.4.0
 distlib==0.3.8
-Django==4.2
+Django==5.0.4
 django-modeltranslation==0.19.4
 django-redis==5.4.0
 django-resized==1.0.2

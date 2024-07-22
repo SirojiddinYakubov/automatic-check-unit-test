@@ -6,6 +6,9 @@ on:
         description: 'Tests path'
         required: false
         default: ''
+      github_feedback_id:
+        description: 'Github feedback id'
+        required: true
   push:
     branches: [ "main" ]
 
@@ -18,11 +21,11 @@ jobs:
     steps:
       - name: Send a signal to the webhook that the job has started.
         run: |
-          curl -X POST --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.actor }}/' \
+          curl -X PUT --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.event.inputs.github_feedback_id }}/' \
           --header 'X-API-KEY: ${{ secrets.X_API_KEY }}' \
+          --form 'github_username=${{ github.actor }}' \
           --form 'action_run_id=${{ github.run_id }}' \
-          --form 'project_id=${{ secrets.PROJECT_ID }}' \
-          --form 'tests_path=${{ github.event.inputs.tests_path }}'
+          --form 'status=started'
 
       - name: Checkout original repository
         uses: actions/checkout@v3
@@ -73,10 +76,16 @@ jobs:
           path: forked-repo/reports/unittest-checker-report.json
 
       - name: Send run_id
-        if: always()
+        if: success() || failure()
         run: |
-          curl -X PUT --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.actor }}/' \
+          status=${{ job.status }}
+          if [ "$status" == "success" ]; then
+            status="completed"
+          else
+            status="failed"
+          fi
+          curl -X PUT --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.event.inputs.github_feedback_id }}/' \
           --header 'X-API-KEY: ${{ secrets.X_API_KEY }}' \
+          --form 'github_username=${{ github.actor }}' \
           --form 'action_run_id=${{ github.run_id }}' \
-          --form 'project_id=${{ secrets.PROJECT_ID }}' \
-          --form 'tests_path=${{ github.event.inputs.tests_path }}'
+          --form 'status=$status'

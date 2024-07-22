@@ -3,12 +3,23 @@ import fakeredis
 from pytest_factoryboy import register
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
-from tests.factories.article_factory import ArticleFactory, TopicFactory
+from tests.factories.article_factory import (
+    ArticleFactory, TopicFactory, CommentFactory,
+    FavoriteFactory, ClapFactory, ReadingHistoryFactory,
+    FollowFactory, PinFactory, NotificationFactory, FAQFactory)
 from tests.factories.user_factory import UserFactory
 
 register(UserFactory)
 register(ArticleFactory)
 register(TopicFactory)
+register(CommentFactory)
+register(FavoriteFactory)
+register(ClapFactory)
+register(ReadingHistoryFactory)
+register(FollowFactory)
+register(PinFactory)
+register(NotificationFactory)
+register(FAQFactory)
 
 
 @pytest.fixture

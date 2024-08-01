@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-03 17:43+0500\n"
+"POT-Creation-Date: 2024-07-26 14:50+0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,15 +18,86 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: core/settings.py:118
+#: articles/views.py:153
+msgid "Maqola arxivlandi."
+msgstr ""
+
+#: articles/views.py:172
+msgid "Maqola pin qilindi."
+msgstr ""
+
+#: articles/views.py:190
+#, fuzzy
+#| msgid "Email topilmadi."
+msgid "Maqola topilmadi.."
+msgstr "Email topilmadi."
+
+#: articles/views.py:210
+msgid "Maqolani o'qish soni ortdi."
+msgstr ""
+
+#: articles/views.py:268
+#, python-brace-format
+msgid "Siz '{topic_name}' mavzusini kuzatyapsiz."
+msgstr ""
+
+#: articles/views.py:273
+#, python-brace-format
+msgid "Siz allaqachon '{topic_name}' mavzusini kuzatyapsiz."
+msgstr ""
+
+#: articles/views.py:289
+#, python-brace-format
+msgid "Siz '{topic_name}' mavzusini kuzatmaysiz."
+msgstr ""
+
+#: articles/views.py:324
+msgid "{} sizga follow qildi."
+msgstr ""
+
+#: articles/views.py:326
+#, fuzzy
+#| msgid "Mufaqqiyatli chiqildi."
+msgid "Mofaqqiyatli follow qilindi."
+msgstr "Mufaqqiyatli chiqildi."
+
+#: articles/views.py:328
+msgid "Siz allaqachon ushbu foydalanuvchini kuzatyapsiz."
+msgstr ""
+
+#: articles/views.py:343
+msgid "Follow relationship not found"
+msgstr ""
+
+#: articles/views.py:470
+msgid "Maqola sevimlilarga qo'shildi."
+msgstr ""
+
+#: articles/views.py:472
+msgid "Maqola sevimlilarga allaqachon qo'shilgan."
+msgstr ""
+
+#: articles/views.py:725
+msgid "Ushbu maqola allaqachon shikoyat qilingan."
+msgstr ""
+
+#: articles/views.py:735
+msgid "Maqola bir nechta shikoyatlar tufayli olib tashlandi."
+msgstr ""
+
+#: articles/views.py:737
+msgid "Shikoyat yuborildi."
+msgstr ""
+
+#: core/settings.py:129
 msgid "English"
 msgstr "English"
 
-#: core/settings.py:119
+#: core/settings.py:130
 msgid "Uzbek"
 msgstr "Uzbek"
 
-#: core/settings.py:120
+#: core/settings.py:131
 msgid "Russian"
 msgstr "Russian"
 
@@ -45,6 +116,18 @@ msgid ""
 msgstr ""
 "Tug'ilgan yili {min_year} dan katta va {max_year} dan kichik bo'lishi kerak."
 
+#: users/errors.py:6
+#, fuzzy
+#| msgid ""
+#| "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"
+msgid "Ushbu elektron pochta manzili bilan faol foydalanuvchi topilmadi!"
+msgstr ""
+"Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"
+
+#: users/exceptions.py:8
+msgid "OTP verification failed."
+msgstr ""
+
 #: users/models.py:44
 msgid "User"
 msgstr "User"
@@ -53,55 +136,56 @@ msgstr "User"
 msgid "Users"
 msgstr "Users"
 
-#: users/serializers.py:73
+#: users/serializers.py:76
 msgid "Kirish maʼlumotlari notoʻgʻri"
 msgstr "Kirish maʼlumotlari notoʻgʻri"
 
-#: users/serializers.py:75
+#: users/serializers.py:78
 msgid "Foydalanuvchi nomi va parol ham talab qilinadi"
 msgstr "Foydalanuvchi nomi va parol ham talab qilinadi"
 
-#: users/serializers.py:109
+#: users/serializers.py:112
 msgid "Yangi va eski parollar bir xil bo'lmasligi kerak"
 msgstr "Yangi va eski parollar bir xil bo'lmasligi kerak"
 
-#: users/serializers.py:118
-msgid "Email topilmadi."
-msgstr "Email topilmadi."
+#: users/serializers.py:121
+#, fuzzy
+#| msgid ""
+#| "Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"
+msgid "Bu email bilan foydalanuvchi topilmadi"
+msgstr ""
+"Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"
 
-#: users/services.py:121
+#: users/services.py:127
 #, python-brace-format
 msgid ""
 "Sizda yaroqli OTP kodingiz bor. {ttl} soniyadan keyin qayta urinib koʻring."
 msgstr ""
 "Sizda yaroqli OTP kodingiz bor. {ttl} soniyadan keyin qayta urinib koʻring."
 
-#: users/services.py:132
+#: users/services.py:139
 msgid "Yaroqsiz OTP kodi."
 msgstr "Yaroqsiz OTP kodi."
 
-#: users/views.py:91
+#: users/views.py:94
 msgid "Hisob maʼlumotlari yaroqsiz"
 msgstr "Hisob maʼlumotlari yaroqsiz"
 
-#: users/views.py:161
+#: users/views.py:153
 msgid "Mufaqqiyatli chiqildi."
 msgstr "Mufaqqiyatli chiqildi."
 
-#: users/views.py:215
+#: users/views.py:187
 msgid "Eski parol xato."
 msgstr "Eski parol xato."
 
-#: users/views.py:240 users/views.py:283 users/views.py:328
-msgid ""
-"Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"
+#: users/views.py:226
+msgid "Emailga xabar yuborishda xatolik yuz berdi"
 msgstr ""
-"Ushbu elektron pochta manzili bilan tasdiqlangan foydalanuvchi topilmadi!"
 
-#: users/views.py:256
-msgid "Email yuborishda nimadir noto'g'ri"
-msgstr "Email yuborishda nimadir noto'g'ri"
-
-#: users/views.py:322
+#: users/views.py:290
 msgid "Token yaroqsiz"
 msgstr "Token yaroqsiz"
+
+#~ msgid "Email yuborishda nimadir noto'g'ri"
+#~ msgstr "Email yuborishda nimadir noto'g'ri"

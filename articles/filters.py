@@ -1,12 +1,17 @@
 import django_filters
-from .models import Article, Topic, Recommendation
+from .models import Article, Recommendation, Pin, Favorite, ReadingHistory
 from django.db.models import Q
-from django.db.models import Count
+from django.db import models
+
 
 class ArticleFilter(django_filters.FilterSet):
     get_top_articles = django_filters.NumberFilter(method='filter_by_top')
     topic_id = django_filters.NumberFilter(method='filter_by_topic')
     is_recommend = django_filters.BooleanFilter(method='filter_by_recommend')
+    search = django_filters.CharFilter(method='search_filter')
+    is_author_articles = django_filters.BooleanFilter(method='author_articles')
+    is_user_favorites = django_filters.BooleanFilter(method='user_favorites')
+    is_reading_history = django_filters.BooleanFilter(method='user_reading_history')
 
     class Meta:
         model = Article
@@ -34,31 +39,6 @@ class ArticleFilter(django_filters.FilterSet):
     def filter_by_topic(self, queryset, name, value):
         return queryset.filter(topics__id=value)
 
-
-class TopicFilter(django_filters.FilterSet):
-    followed = django_filters.BooleanFilter(method='filter_by_followed')
-    is_recommend = django_filters.BooleanFilter(method='filter_by_recommend')
-
-    class Meta:
-        model = Topic
-        fields = ['followed', 'is_recommend']
-
-    def filter_by_followed(self, queryset, name, value):
-        queryset = Topic.objects.filter(topic_follows__user=self.request.user)
-        return queryset
-
-    def filter_by_recommend(self, queryset, name, value):
-        queryset = Topic.objects.annotate(num_followers=Count('topic_follows')).order_by('-num_followers')[:5]
-        return queryset
-
-
-class SearchFilter(django_filters.FilterSet):
-    search = django_filters.CharFilter(method='search_filter')
-
-    class Meta:
-        model = Article
-        fields = []
-
     def search_filter(self, queryset, name, value):
         return queryset.filter(
             Q(title__icontains=value) |
@@ -67,3 +47,24 @@ class SearchFilter(django_filters.FilterSet):
             Q(topics__name__icontains=value) |
             Q(topics__description__icontains=value)
         ).distinct()
+
+    def author_articles(self, queryset, name, value):
+        user = self.request.user
+
+        queryset = Article.objects.filter(author=user)
+        pin_subquery = Pin.objects.filter(article=models.OuterRef('pk'), user=user)
+        queryset = queryset.annotate(
+            is_pinned=models.Exists(pin_subquery)
+        )
+        queryset = queryset.order_by('-is_pinned', '-created_at')
+        return queryset
+
+    def user_favorites(self, queryset, name, value):
+        favorites = Favorite.objects.filter(user=self.request.user).order_by('-created_at')
+        article_ids = favorites.values_list('article_id', flat=True)
+        return queryset.filter(id__in=article_ids)
+
+    def user_reading_history(self, queryset, name, value):
+        reading_history = ReadingHistory.objects.filter(user=self.request.user).order_by('-created_at')
+        article_ids = reading_history.values_list('article_id', flat=True)
+        return queryset.filter(id__in=article_ids)

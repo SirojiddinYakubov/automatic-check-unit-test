@@ -14,7 +14,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
 
-    id = factory.Faker('pyint', min_value=1, max_value=1000)
+    id = factory.Faker('pyint', min_value=1, max_value=100000)
     username = factory.LazyFunction(fake.user_name)
     email = factory.LazyFunction(fake.email)
     first_name = fake.first_name()

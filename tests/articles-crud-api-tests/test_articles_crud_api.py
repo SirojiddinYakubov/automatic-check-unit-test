@@ -23,7 +23,7 @@ def articles_data(user_factory, topic_factory, article_factory):
         article.topics.add(topics[1])
         article.topics.add(topics[2])
 
-    return articles, topics
+    return articles, topics, user
 
 
 @pytest.mark.django_db
@@ -32,8 +32,7 @@ def test_articles(articles_data, api_client, tokens):
     The function tests the articles.
     """
 
-    articles, _ = articles_data
-    user = articles[0].author
+    articles, _, user = articles_data
     access, _ = tokens(user)
 
     response = api_client(token=access).get('/articles/')
@@ -48,7 +47,7 @@ def test_articles_top(articles_data, api_client, tokens):
     The function tests the association between articles and topics.
     """
 
-    articles, topics = articles_data
+    articles, _, user = articles_data
 
     articles[3].views_count = 13
     articles[3].save()
@@ -58,7 +57,6 @@ def test_articles_top(articles_data, api_client, tokens):
     articles[4].save()
     article_1_id = articles[4].id
 
-    user = articles[0].author
     access, _ = tokens(user)
 
     response = api_client(token=access).get('/articles/?get_top_articles=2')
@@ -78,8 +76,7 @@ def test_articles_topic_id(articles_data, api_client, tokens):
     The function tests the association between articles and topics.
     """
 
-    articles, topics = articles_data
-    user = articles[0].author
+    articles, topics, user = articles_data
     access, _ = tokens(user)
 
     topic_id = topics[0].id
@@ -88,18 +85,24 @@ def test_articles_topic_id(articles_data, api_client, tokens):
 
 
 @pytest.mark.django_db
-def test_articles_recommendations(articles_data, api_client, tokens):
+def test_articles_more_recommendations(articles_data, api_client, tokens):
     """
-    The function tests the association between articles and recommendations.
+    The function tests the association between articles and more recommendations.
     """
 
-    articles, topics = articles_data
-    user = articles[0].author
+    articles, topics, user = articles_data
     access, _ = tokens(user)
     client = api_client(token=access)
 
     topic_id = articles[0].topics.first().id
     article_id = articles[0].id
+
+    data = {
+        "less_article_id": article_id
+    }
+
+    response = client.post('/users/recommend/', data=data, format='json')
+    assert response.status_code == status.HTTP_204_NO_CONTENT
 
     data = {
         "more_article_id": article_id
@@ -111,6 +114,38 @@ def test_articles_recommendations(articles_data, api_client, tokens):
     response = client.get('/articles/?is_recommend=true')
     assert response.status_code == status.HTTP_200_OK
     assert response.data['results'][0]['topics'][0]['id'] == topic_id
+
+
+@pytest.mark.django_db
+def test_articles_less_recommendations(articles_data, api_client, tokens):
+    """
+    The function tests the association between articles and less recommendations.
+    """
+
+    articles, topics, user = articles_data
+    access, _ = tokens(user)
+    client = api_client(token=access)
+
+    articles[0].topics.first().id
+    article_id = articles[0].id
+
+    data = {
+        "more_article_id": article_id
+    }
+
+    more_response = client.post('/users/recommend/', data=data, format='json')
+    assert more_response.status_code == status.HTTP_204_NO_CONTENT
+
+    data = {
+        "less_article_id": article_id
+    }
+
+    response = client.post('/users/recommend/', data=data, format='json')
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    response = client.get('/articles/?is_recommend=true')
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data['count'] == 0
 
 
 @pytest.fixture()
@@ -210,12 +245,10 @@ def test_article_create(test_article_create_data, api_client, tokens):
         "content": data.get('content'),
         "topic_ids": data.get('topics')
     }
-    print("topic_ids", data.get('topic_ids'))
+
     response = client.post('/articles/', data=data, format='multipart')
 
     assert response.status_code == status_code
-
-    print("status code: ", response.status_code)
 
     if status_code == 201:
         assert response.status_code == status_code

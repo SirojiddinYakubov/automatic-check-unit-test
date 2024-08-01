@@ -12,9 +12,8 @@ urlpatterns = [
     path('articles/<int:id>/detail/comments/', views.ArticleDetailCommentsView.as_view(), name='article-detail-comments'),
     path('articles/<int:pk>/favorite/', views.FavoriteArticleView.as_view(), name='favorite-article'),
     path('articles/<int:id>/report/', views.ReportArticleView.as_view(), name='report-article'),
-    path('articles/faqs/', views.FAQListView.as_view(), name='faq-list'),  # Ensure this path is correct
+    path('articles/faqs/', views.FAQListView.as_view(), name='faq-list'),
     path('articles/topics/<int:id>/follow/', views.TopicFollowView.as_view(), name='topic-follow'),
     path('articles/<int:id>/clap/', views.ClapView.as_view(), name='article-clap'),
-    path('articles/search/', views.SearchView.as_view(), name='article-search'),
     path('articles/', include(router.urls)),
 ]

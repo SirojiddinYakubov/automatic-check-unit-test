@@ -13,16 +13,15 @@ from .models import (
 from .serializers import (
     ArticleListSerializer, ArticleCreateSerializer,
     ArticleDetailSerializer, CommentSerializer,
-    FavoriteSerializer, ClapSerializer, DefaultResponseSerializer,
-    ReadingHistorySerializer, RecommendationSerializer,
+    ClapSerializer, DefaultResponseSerializer,
+    RecommendationSerializer,
     NotificationSerializer, ReportSerializer, FAQSerializer,
     ArticleDetailCommentsSerializer, CommentResponseSerializer)
 from users.serializers import UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
-from .filters import ArticleFilter, SearchFilter
+from .filters import ArticleFilter
 from rest_framework.decorators import action
 from django.utils import timezone
-from django.db import models
 from typing import Dict, Any
 
 User = get_user_model()
@@ -84,15 +83,23 @@ class ArticlesView(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
-        if self.action in ['create', 'partial_update']:
+        if self.action == 'create':
             return ArticleCreateSerializer
-        if self.action == 'list':
+        elif self.action == 'partial_update':
+            return ArticleCreateSerializer
+        elif self.action == 'list':
             return ArticleListSerializer
-        if self.action == 'retrieve':
+        elif self.action == 'retrieve':
             return ArticleDetailSerializer
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Article.objects.none()
+
         user = self.request.user
+        if not user.is_authenticated:
+            return Article.objects.none()
+
         queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
 
         recommendations = Recommendation.objects.filter(user=user)
@@ -199,31 +206,6 @@ class ArticlesView(viewsets.ModelViewSet):
         article.reads_count += 1
         article.save(update_fields=['reads_count'])
         return Response({"detail": _("Maqolani o'qish soni ortdi.")}, status=status.HTTP_200_OK)
-
-
-@extend_schema(
-    summary="Get user articles",
-    description="Retrieve a list of articles pinned by the authenticated user.",
-    request=None,
-    responses=default_response(
-            (200, ArticleListSerializer(many=True)), 400, 404
-        )
-)
-class UserPinnedArticles(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = ArticleListSerializer
-    http_method_names = ['get']
-
-    def get_queryset(self):
-        user = self.request.user
-
-        queryset = Article.objects.filter(author=user)
-        pin_subquery = Pin.objects.filter(article=models.OuterRef('pk'), user=user)
-        queryset = queryset.annotate(
-            is_pinned=models.Exists(pin_subquery)
-        )
-        queryset = queryset.order_by('-is_pinned', '-created_at')
-        return queryset
 
 
 @extend_schema_view(
@@ -422,19 +404,6 @@ class ArticleDetailCommentsView(generics.ListAPIView):
 
 
 @extend_schema_view(
-    get=extend_schema(
-        summary="Search",
-        request=ArticleListSerializer,
-        responses={200: ArticleListSerializer}
-    ))
-class SearchView(generics.ListAPIView):
-    queryset = Article.objects.filter(status=ArticleStatus.PUBLISH)
-    serializer_class = ArticleListSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = SearchFilter
-
-
-@extend_schema_view(
     post=extend_schema(
         summary="Add Article To Favorite",
         request=None,
@@ -468,21 +437,6 @@ class FavoriteArticleView(generics.CreateAPIView, generics.DestroyAPIView):
             Favorite, user=request.user, article=article)
         favorite.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-@extend_schema_view(
-    get=extend_schema(
-        summary="User Favorites",
-        request=None,
-        responses={200: ArticleListSerializer}
-    ))
-class UserFavoritesListView(generics.ListAPIView):
-    serializer_class = FavoriteSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        return Favorite.objects.filter(user=user)
 
 
 @extend_schema_view(
@@ -551,23 +505,6 @@ class PopularAuthorsView(generics.ListAPIView):
         ).annotate(
             total_reads_count=Sum('article__reads_count')
         ).order_by('-total_reads_count')[:5]
-
-
-@extend_schema_view(
-    get=extend_schema(
-        summary="Reading History",
-        request=None,
-        responses=default_response(
-            (200, ArticleListSerializer), 400, 401, 404
-        )
-    )
-)
-class ReadingHistoryView(generics.ListAPIView):
-    serializer_class = ReadingHistorySerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return ReadingHistory.objects.filter(user=self.request.user).order_by('-created_at')
 
 
 @extend_schema_view(
